@@ -253,7 +253,7 @@ export default function Result() {
                         ) : (
                           <p className="font-display text-lg font-bold text-ink">{item.name}</p>
                         )}
-                        <p className="text-sm text-slate-500">
+                        <p className="mt-1 text-sm text-slate-500">
                           {CATEGORY_LABEL[item.category] || item.category}
                           {" · "}
                           {item.portions} {item.portions > 1 ? "portions" : "portion"}
