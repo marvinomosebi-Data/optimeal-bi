@@ -1,12 +1,13 @@
 import { NavLink } from "react-router-dom";
-import { LayoutGrid, TrendingUp, ShieldCheck, LogOut, BarChart3, Heart } from "lucide-react";
+import { UtensilsCrossed, TrendingUp, ShieldCheck, LogOut, BarChart3, Heart, CalendarDays } from "lucide-react";
 import { useAuth } from "../lib/auth.jsx";
 
-export default function Sidebar({ onUpdatePrices, onLogout }) {
+export default function Sidebar({ onLogout }) {
   const { role, session } = useAuth();
 
   const links = [
-    { to: "/app/optimizer", label: "Meal Optimizer", icon: LayoutGrid },
+    { to: "/app/plan",      label: "Meal Planner",   icon: UtensilsCrossed },
+    { to: "/app/optimizer", label: "Meal Optimizer",  icon: CalendarDays },
     ...(session ? [{ to: "/app/favorites", label: "Saved Meals", icon: Heart }] : []),
     { to: "/app/trends",    label: "Price Analytics", icon: TrendingUp },
     ...(role === "admin" ? [{ to: "/app/admin", label: "Admin Portal", icon: ShieldCheck }] : []),

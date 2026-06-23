@@ -1,11 +1,11 @@
-import { LogOut, BarChart3, LayoutGrid, TrendingUp, Heart } from "lucide-react";
+import { LogOut, BarChart3, TrendingUp, Heart, UtensilsCrossed, CalendarDays } from "lucide-react";
 import { NavLink } from "react-router-dom";
 import { useAuth } from "../lib/auth.jsx";
 
 export function Topbar({ title }) {
   const { session, role } = useAuth();
   const initials = session?.user?.user_metadata?.full_name
-    ?.split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase() || "G";
+    ?.split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase() || "U";
 
   return (
     <header className="sticky top-0 z-20 flex items-center gap-4 border-b border-slate-200 bg-slatebg/80 px-4 py-4 backdrop-blur lg:px-8 overflow-hidden min-w-0">
@@ -16,7 +16,7 @@ export function Topbar({ title }) {
             Admin
           </span>
         )}
-        <div className="grid h-10 w-10 place-items-center rounded-full bg-navy text-sm font-bold text-white">
+        <div className="grid h-10 w-10 place-items-center rounded-full bg-navy text-sm font-bold text-white shrink-0">
           {initials}
         </div>
       </div>
@@ -27,10 +27,10 @@ export function Topbar({ title }) {
 export function MobileNav({ onLogout }) {
   const { role, session } = useAuth();
   const links = [
-    { to: "/app/optimizer", label: "Optimizer", icon: LayoutGrid },
+    { to: "/app/plan",      label: "Plan",     icon: UtensilsCrossed },
+    { to: "/app/optimizer", label: "Optimizer", icon: CalendarDays },
     ...(session ? [{ to: "/app/favorites", label: "Saved", icon: Heart }] : []),
-    { to: "/app/trends",    label: "Trends",    icon: TrendingUp },
-    ...(role === "admin" ? [{ to: "/app/admin", label: "Admin", icon: BarChart3 }] : []),
+    { to: "/app/trends",    label: "Trends",   icon: TrendingUp },
   ];
   return (
     <nav className="fixed inset-x-0 bottom-0 z-30 flex border-t border-slate-200 bg-white lg:hidden">
@@ -51,7 +51,7 @@ export function MobileNav({ onLogout }) {
         className="flex flex-1 flex-col items-center py-3 text-xs font-semibold gap-1 text-red-400"
       >
         <LogOut className="h-5 w-5" />
-        Sign out
+        Out
       </button>
     </nav>
   );

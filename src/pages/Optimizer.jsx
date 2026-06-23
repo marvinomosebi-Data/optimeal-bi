@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { Topbar } from "../components/Topbar.jsx";
 import { fetchCafeterias, fetchMenu } from "../lib/dataService.js";
 import { optimizeMeal } from "../lib/optimizer.js";
 import { useAuth } from "../lib/auth.jsx";
-import { CATEGORIES } from "../data/dataset.js";
-import { Leaf, Utensils, Soup, Zap, Info, MapPin, Flame } from "lucide-react";
+import { CATEGORIES, MEAL_TYPES } from "../data/dataset.js";
+import { Leaf, Utensils, Soup, Zap, Info, ArrowLeft, Flame } from "lucide-react";
 
 const APPETITE_OPTS = [
   { key: "Light",  icon: Leaf,     desc: "Light eater" },
@@ -26,13 +26,21 @@ const SOUP_CAT = "Soup";
 export default function Optimizer() {
   const navigate = useNavigate();
   const { session } = useAuth();
+  const [searchParams] = useSearchParams();
 
-  const [budget, setBudget]     = useState(1500);
+  // Read from URL params (set by Plan page) or use defaults
+  const initBudget = searchParams.get("budget") || "1500";
+  const initCafe   = Number(searchParams.get("cafe")) || 1;
+  const initMeal   = searchParams.get("meal") || "lunch";
+
+  const [budget, setBudget]     = useState(initBudget);
   const [appetite, setAppetite] = useState("Normal");
   const [cafes, setCafes]       = useState([]);
-  const [cafeId, setCafeId]     = useState(1);
+  const [cafeId, setCafeId]     = useState(initCafe);
   const [menu, setMenu]         = useState([]);
   const [prefs, setPrefs]       = useState({});
+
+  const mealLabel = MEAL_TYPES[initMeal?.toUpperCase()]?.label || "Meal";
 
   useEffect(() => { fetchCafeterias().then(setCafes); }, []);
   useEffect(() => { fetchMenu(cafeId).then(setMenu); setPrefs({}); }, [cafeId]);
@@ -92,11 +100,15 @@ export default function Optimizer() {
 
         {/* ── Page header ── */}
         <div className="mb-6">
+          <button onClick={() => navigate("/app/plan")}
+            className="mb-3 flex items-center gap-1.5 text-sm font-semibold text-slate-500 hover:text-navy">
+            <ArrowLeft className="h-4 w-4" /> Back to Meal Planner
+          </button>
           <h2 className="font-display text-2xl font-extrabold text-ink lg:text-3xl">
-            Plan your meal, <span className="text-gold-dark">{userName}</span>
+            {mealLabel} at <span className="text-gold-dark">{activeCafe?.name ?? "..."}</span>
           </h2>
           <p className="mt-1 text-sm text-slate-500">
-            Select a cafeteria, set your budget, and the engine builds the most filling plan available.
+            Customize your preferences and we'll optimize the best meal for your ₦{Number(budget).toLocaleString()} budget.
           </p>
         </div>
 

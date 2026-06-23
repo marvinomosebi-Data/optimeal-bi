@@ -46,18 +46,18 @@ export const useAuth = () => useContext(AuthCtx);
    guestOk = true allows guests through (optimizer/result/trends all work
    without an account); only admin and account-bound pages require a real
    session. */
-export function RequireAuth({ adminOnly = false, guestOk = false, children }) {
+export function RequireAuth({ adminOnly = false, children }) {
   const { session, role, loading } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
     if (loading) return;
-    if (!session && !guestOk) { navigate("/", { replace: true }); return; }
-    if (adminOnly && (!session || role !== "admin")) { navigate("/app/optimizer", { replace: true }); }
+    if (!session) { navigate("/", { replace: true }); return; }
+    if (adminOnly && role !== "admin") { navigate("/app/plan", { replace: true }); }
   }, [session, role, loading]);
 
   if (loading) return null;
-  if (!session && !guestOk) return null;
-  if (adminOnly && (!session || role !== "admin")) return null;
+  if (!session) return null;
+  if (adminOnly && role !== "admin") return null;
   return children;
 }

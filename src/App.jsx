@@ -2,6 +2,7 @@ import { Routes, Route, Navigate } from "react-router-dom";
 import { RequireAuth } from "./lib/auth.jsx";
 import AppLayout from "./components/AppLayout.jsx";
 import Login from "./pages/Login.jsx";
+import Plan from "./pages/Plan.jsx";
 import Optimizer from "./pages/Optimizer.jsx";
 import Result from "./pages/Result.jsx";
 import Trends from "./pages/Trends.jsx";
@@ -15,16 +16,17 @@ export default function App() {
       <Route
         path="/app"
         element={
-          <RequireAuth guestOk>
+          <RequireAuth>
             <AppLayout />
           </RequireAuth>
         }
       >
-        <Route index element={<Navigate to="optimizer" replace />} />
-        <Route path="optimizer"  element={<Optimizer />} />
-        <Route path="result"     element={<Result />} />
-        <Route path="trends"     element={<Trends />} />
-        <Route path="favorites"  element={<Favorites />} />
+        <Route index element={<Navigate to="plan" replace />} />
+        <Route path="plan"      element={<Plan />} />
+        <Route path="optimizer" element={<Optimizer />} />
+        <Route path="result"    element={<Result />} />
+        <Route path="trends"    element={<Trends />} />
+        <Route path="favorites" element={<Favorites />} />
         <Route
           path="admin"
           element={
