@@ -1,7 +1,14 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { BarChart3, IdCard, Lock, Mail, Eye, EyeOff, UserPlus, LogIn, RefreshCw, ShieldCheck, KeyRound, ArrowLeft } from "lucide-react";
-import { signIn, signUp, resetPasswordByRecoveryEmail, verifyPasswordResetOtp, getSession, getRole, supabase } from "../lib/supabase.js";
+import {
+  BarChart3, IdCard, Lock, Mail, Eye, EyeOff,
+  UserPlus, LogIn, RefreshCw, ShieldCheck,
+  KeyRound, ArrowLeft, CheckCircle2
+} from "lucide-react";
+import {
+  signIn, signUp, resetPasswordByRecoveryEmail,
+  verifyPasswordResetOtp, getSession, getRole, supabase
+} from "../lib/supabase.js";
 import { ID_EXAMPLES, formatIdInput } from "../lib/identity.js";
 
 const Field = ({ icon: Icon, type, placeholder, value, onChange, right, mono, maxLength }) => (
@@ -9,33 +16,34 @@ const Field = ({ icon: Icon, type, placeholder, value, onChange, right, mono, ma
     <Icon className="pointer-events-none absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
     <input
       type={type || "text"}
-      className={`field pl-11 pr-11 ${mono ? "font-mono tracking-wide" : ""}`}
+      className={`field pl-11 pr-11 ${mono ? "font-mono tracking-widest text-center text-xl" : ""}`}
       placeholder={placeholder}
       value={value}
       onChange={(e) => onChange(e.target.value)}
       autoComplete="off"
-      autoCapitalize="characters"
+      autoCapitalize="off"
       maxLength={maxLength}
     />
     {right}
   </div>
 );
 
+// tabs: "in" | "up" | "verify" | "reset" | "otp" | "newpw" | "done"
 export default function Login() {
   const navigate = useNavigate();
-  const [tab, setTab]               = useState("in");
-  const [idNumber, setIdNumber]     = useState("");
-  const [name, setName]             = useState("");
-  const [bowenEmail, setBowenEmail] = useState("");
-  const [resetEmail, setResetEmail] = useState("");
-  const [otpCode, setOtpCode]       = useState("");
-  const [pw, setPw]                 = useState("");
-  const [confirmPw, setConfirmPw]   = useState("");
-  const [showPw, setShowPw]         = useState(false);
+  const [tab, setTab]                     = useState("in");
+  const [idNumber, setIdNumber]           = useState("");
+  const [name, setName]                   = useState("");
+  const [bowenEmail, setBowenEmail]       = useState("");
+  const [resetEmail, setResetEmail]       = useState("");
+  const [otpCode, setOtpCode]             = useState("");
+  const [pw, setPw]                       = useState("");
+  const [confirmPw, setConfirmPw]         = useState("");
+  const [showPw, setShowPw]               = useState(false);
   const [showConfirmPw, setShowConfirmPw] = useState(false);
-  const [loading, setLoading]       = useState(false);
-  const [err, setErr]               = useState("");
-  const [msg, setMsg]               = useState("");
+  const [loading, setLoading]             = useState(false);
+  const [err, setErr]                     = useState("");
+  const [msg, setMsg]                     = useState("");
 
   useEffect(() => {
     getSession().then(async (s) => {
@@ -51,7 +59,8 @@ export default function Login() {
     }
   }, []);
 
-  const go = (role) => navigate(role === "admin" ? "/app/admin" : "/app/optimizer", { replace: true });
+  const go = (role) =>
+    navigate(role === "admin" ? "/app/admin" : "/app/optimizer", { replace: true });
 
   async function handleSignIn(e) {
     e.preventDefault();
@@ -77,12 +86,12 @@ export default function Login() {
     } finally { setLoading(false); }
   }
 
+  // Step 1 — send OTP
   async function handleReset(e) {
     e.preventDefault();
     setErr(""); setLoading(true);
     try {
       await resetPasswordByRecoveryEmail(resetEmail);
-      setMsg("");
       setOtpCode("");
       setTab("otp");
     } catch (ex) {
@@ -90,41 +99,34 @@ export default function Login() {
     } finally { setLoading(false); }
   }
 
+  // Step 2 — verify OTP
   async function handleVerifyOtp(e) {
     e.preventDefault();
     setErr(""); setLoading(true);
     const clean = otpCode.replace(/\s/g, "");
     if (clean.length !== 6 || !/^\d{6}$/.test(clean)) {
       setErr("Please enter the 6-digit code from your email.");
-      setLoading(false);
-      return;
+      setLoading(false); return;
     }
     try {
       await verifyPasswordResetOtp(resetEmail, clean);
-      setPw("");
-      setConfirmPw("");
+      setPw(""); setConfirmPw("");
       setTab("newpw");
     } catch (ex) {
       setErr(ex.message || "Invalid or expired code. Please try again.");
     } finally { setLoading(false); }
   }
 
+  // Step 3 — set new password
   async function handleUpdatePw(e) {
     e.preventDefault();
     setErr(""); setLoading(true);
-    if (pw.length < 6) {
-      setErr("Password must be at least 6 characters.");
-      setLoading(false); return;
-    }
-    if (pw !== confirmPw) {
-      setErr("Passwords do not match.");
-      setLoading(false); return;
-    }
+    if (pw.length < 6) { setErr("Password must be at least 6 characters."); setLoading(false); return; }
+    if (pw !== confirmPw) { setErr("Passwords do not match."); setLoading(false); return; }
     try {
       const { error } = await supabase.auth.updateUser({ password: pw });
       if (error) throw error;
-      setMsg("Password updated successfully. Please sign in with your new password.");
-      setTab("in");
+      setTab("done");
     } catch (ex) {
       setErr(ex.message || "Could not update password.");
     } finally { setLoading(false); }
@@ -146,6 +148,185 @@ export default function Login() {
 
   function backToSignIn() { setTab("in"); setErr(""); setMsg(""); setOtpCode(""); }
 
+  /* ── Shared card wrapper for the reset flow steps ── */
+  const ResetCard = ({ children }) => (
+    <div className="bg-dotted relative flex min-h-screen items-center justify-center px-4 py-12">
+      <div className="w-full max-w-md">
+        {/* Back link */}
+        <button onClick={backToSignIn}
+          className="mb-6 flex items-center gap-2 text-sm font-semibold text-slate-500 hover:text-navy">
+          <ArrowLeft className="h-4 w-4" /> Back to Sign In
+        </button>
+
+        <div className="card p-8">
+          {/* Brand */}
+          <div className="mb-6 flex items-center gap-3">
+            <div className="grid h-11 w-11 place-items-center rounded-xl bg-navy">
+              <BarChart3 className="h-5 w-5 text-gold" />
+            </div>
+            <div>
+              <p className="font-display text-base font-extrabold leading-none text-ink">OptiMeal BI</p>
+              <p className="text-xs font-medium text-emerald-600">Password Recovery</p>
+            </div>
+          </div>
+
+          {err && (
+            <p className="mb-4 rounded-lg bg-red-50 px-4 py-2.5 text-sm font-medium text-red-600">{err}</p>
+          )}
+
+          {children}
+        </div>
+      </div>
+    </div>
+  );
+
+  /* ══════════════════════════════════════════════
+     RESET STEP 1 — Enter email
+  ══════════════════════════════════════════════ */
+  if (tab === "reset") return (
+    <ResetCard>
+      <h2 className="font-display text-2xl font-bold text-ink">Forgot your password?</h2>
+      <p className="mt-1 mb-6 text-sm text-slate-500">
+        No worries! Enter your email and we'll send you a reset code.
+      </p>
+      <form onSubmit={handleReset} className="space-y-4">
+        <div>
+          <label className="mb-1.5 block text-sm font-semibold text-ink">Email Address</label>
+          <Field icon={Mail} type="email" placeholder="yourname@bowen.edu.ng"
+            value={resetEmail} onChange={setResetEmail} />
+        </div>
+        <button type="submit" disabled={loading || !resetEmail}
+          className="btn-primary w-full py-3.5 disabled:opacity-60">
+          {loading
+            ? <RefreshCw className="h-4 w-4 animate-spin" />
+            : "Send Reset Code →"}
+        </button>
+      </form>
+    </ResetCard>
+  );
+
+  /* ══════════════════════════════════════════════
+     RESET STEP 2 — Enter 6-digit OTP
+  ══════════════════════════════════════════════ */
+  if (tab === "otp") return (
+    <ResetCard>
+      <h2 className="font-display text-2xl font-bold text-ink">Check your email</h2>
+      <p className="mt-1 mb-1 text-sm text-slate-600">
+        A reset code was sent to{" "}
+        <span className="font-semibold text-ink">{resetEmail}</span>
+      </p>
+      <p className="mb-6 text-xs text-emerald-600 font-medium">
+        The code expires in 15 minutes. Check your spam folder if you don't see it.
+      </p>
+
+      <form onSubmit={handleVerifyOtp} className="space-y-4">
+        <div>
+          <label className="mb-1.5 block text-sm font-semibold text-ink">6-digit Reset Code</label>
+          <div className="relative">
+            <input
+              type="text"
+              inputMode="numeric"
+              className="field text-center font-mono text-2xl tracking-[0.5em] py-4"
+              placeholder="000000"
+              value={otpCode}
+              onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+              maxLength={6}
+              autoComplete="one-time-code"
+            />
+          </div>
+        </div>
+
+        <button type="submit" disabled={loading || otpCode.length !== 6}
+          className="btn-primary w-full py-3.5 disabled:opacity-60">
+          {loading
+            ? <RefreshCw className="h-4 w-4 animate-spin" />
+            : "Verify Code →"}
+        </button>
+
+        <button type="button"
+          onClick={() => { setTab("reset"); setErr(""); setOtpCode(""); }}
+          className="w-full text-center text-sm font-semibold text-slate-400 hover:text-navy">
+          ← Try a different email
+        </button>
+      </form>
+    </ResetCard>
+  );
+
+  /* ══════════════════════════════════════════════
+     RESET STEP 3 — Set new password
+  ══════════════════════════════════════════════ */
+  if (tab === "newpw") return (
+    <ResetCard>
+      <h2 className="font-display text-2xl font-bold text-ink">Set new password</h2>
+      <p className="mt-1 mb-6 text-sm text-slate-500">
+        Choose a strong password you haven't used before.
+      </p>
+
+      <form onSubmit={handleUpdatePw} className="space-y-4">
+        <div>
+          <label className="mb-1.5 block text-sm font-semibold text-ink">New Password</label>
+          <Field icon={Lock} type={showPw ? "text" : "password"}
+            placeholder="At least 6 characters" value={pw} onChange={setPw} right={eyeBtn} />
+        </div>
+        <div>
+          <label className="mb-1.5 block text-sm font-semibold text-ink">Confirm New Password</label>
+          <Field icon={Lock} type={showConfirmPw ? "text" : "password"}
+            placeholder="Repeat password" value={confirmPw} onChange={setConfirmPw} right={confirmEyeBtn} />
+          {confirmPw && pw !== confirmPw && (
+            <p className="mt-1.5 text-xs font-medium text-red-500">Passwords do not match</p>
+          )}
+          {confirmPw && pw === confirmPw && pw.length >= 6 && (
+            <p className="mt-1.5 text-xs font-medium text-emerald-600">✓ Passwords match</p>
+          )}
+        </div>
+
+        <button type="submit"
+          disabled={loading || pw.length < 6 || pw !== confirmPw}
+          className="btn-primary w-full py-3.5 disabled:opacity-60">
+          {loading
+            ? <RefreshCw className="h-4 w-4 animate-spin" />
+            : "Reset Password →"}
+        </button>
+      </form>
+    </ResetCard>
+  );
+
+  /* ══════════════════════════════════════════════
+     RESET STEP 4 — Success screen
+  ══════════════════════════════════════════════ */
+  if (tab === "done") return (
+    <div className="bg-dotted relative flex min-h-screen items-center justify-center px-4 py-12">
+      <div className="w-full max-w-md">
+        <div className="card p-8 text-center">
+          {/* Brand */}
+          <div className="mb-6 flex items-center justify-center gap-3">
+            <div className="grid h-11 w-11 place-items-center rounded-xl bg-navy">
+              <BarChart3 className="h-5 w-5 text-gold" />
+            </div>
+            <div className="text-left">
+              <p className="font-display text-base font-extrabold leading-none text-ink">OptiMeal BI</p>
+              <p className="text-xs font-medium text-emerald-600">Password Recovery</p>
+            </div>
+          </div>
+
+          <div className="mx-auto mb-4 grid h-16 w-16 place-items-center rounded-full bg-emerald-50">
+            <CheckCircle2 className="h-8 w-8 text-emerald-500" />
+          </div>
+          <h2 className="font-display text-2xl font-bold text-ink">Password reset! 🎉</h2>
+          <p className="mt-2 mb-6 text-sm text-slate-500">
+            Your password has been updated. You can now sign in with your new password.
+          </p>
+          <button onClick={backToSignIn} className="btn-primary w-full py-3.5">
+            Sign In →
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+
+  /* ══════════════════════════════════════════════
+     MAIN LOGIN / SIGNUP SCREEN
+  ══════════════════════════════════════════════ */
   return (
     <div className="bg-dotted relative flex min-h-screen items-center justify-center px-4 py-12">
       <div className="w-full max-w-md">
@@ -160,10 +341,12 @@ export default function Login() {
         <div className="card mt-8 p-7">
           {(tab === "in" || tab === "up") && (
             <div className="grid grid-cols-2 gap-1 rounded-xl bg-slate-100 p-1">
-              {[["in","Sign In"],["up","Create Account"]].map(([t, label]) => (
+              {[["in", "Sign In"], ["up", "Create Account"]].map(([t, label]) => (
                 <button key={t} type="button"
                   onClick={() => { setTab(t); setErr(""); setMsg(""); }}
-                  className={`rounded-lg py-2.5 text-sm font-semibold transition ${tab===t ? "bg-white text-ink shadow-sm" : "text-slate-500"}`}>
+                  className={`rounded-lg py-2.5 text-sm font-semibold transition ${
+                    tab === t ? "bg-white text-ink shadow-sm" : "text-slate-500"
+                  }`}>
                   {label}
                 </button>
               ))}
@@ -179,21 +362,27 @@ export default function Login() {
               <div>
                 <label className="text-sm font-semibold text-ink">Matric / Staff ID</label>
                 <div className="mt-2">
-                  <Field icon={IdCard} placeholder={`${ID_EXAMPLES.student} or ${ID_EXAMPLES.staff}`}
-                    value={idNumber} onChange={(v) => setIdNumber(formatIdInput(v))} mono />
+                  <Field icon={IdCard}
+                    placeholder={`${ID_EXAMPLES.student} or ${ID_EXAMPLES.staff}`}
+                    value={idNumber} onChange={(v) => setIdNumber(formatIdInput(v))} mono={false} />
                 </div>
               </div>
               <div>
                 <div className="flex items-center justify-between">
                   <label className="text-sm font-semibold text-ink">Password</label>
-                  <button type="button" onClick={() => { setTab("reset"); setErr(""); setMsg(""); }}
-                    className="text-sm font-semibold text-gold-dark hover:underline">Forgot password?</button>
+                  <button type="button"
+                    onClick={() => { setTab("reset"); setErr(""); setMsg(""); }}
+                    className="text-sm font-semibold text-gold-dark hover:underline">
+                    Forgot password?
+                  </button>
                 </div>
                 <div className="mt-2">
-                  <Field icon={Lock} type={showPw ? "text" : "password"} placeholder="••••••••" value={pw} onChange={setPw} right={eyeBtn} />
+                  <Field icon={Lock} type={showPw ? "text" : "password"}
+                    placeholder="••••••••" value={pw} onChange={setPw} right={eyeBtn} />
                 </div>
               </div>
-              <button type="submit" disabled={loading} className="btn-primary w-full py-3.5 disabled:opacity-60">
+              <button type="submit" disabled={loading}
+                className="btn-primary w-full py-3.5 disabled:opacity-60">
                 {loading ? <RefreshCw className="h-4 w-4 animate-spin" /> : <><LogIn className="h-4 w-4" /> Sign In</>}
               </button>
               <button type="button" onClick={() => navigate("/app/optimizer")}
@@ -208,13 +397,16 @@ export default function Login() {
             <form onSubmit={handleSignUp} className="mt-6 space-y-5">
               <div>
                 <label className="text-sm font-semibold text-ink">Full name</label>
-                <div className="mt-2"><Field icon={UserPlus} placeholder="Omosebi Marvellous" value={name} onChange={setName} /></div>
+                <div className="mt-2">
+                  <Field icon={UserPlus} placeholder="Omosebi Marvellous" value={name} onChange={setName} />
+                </div>
               </div>
               <div>
                 <label className="text-sm font-semibold text-ink">Matric / Staff ID</label>
                 <div className="mt-2">
-                  <Field icon={IdCard} placeholder={`${ID_EXAMPLES.student} or ${ID_EXAMPLES.staff}`}
-                    value={idNumber} onChange={(v) => setIdNumber(formatIdInput(v))} mono />
+                  <Field icon={IdCard}
+                    placeholder={`${ID_EXAMPLES.student} or ${ID_EXAMPLES.staff}`}
+                    value={idNumber} onChange={(v) => setIdNumber(formatIdInput(v))} mono={false} />
                 </div>
                 <p className="mt-1.5 text-xs text-slate-400">
                   Student: {ID_EXAMPLES.student} &nbsp;·&nbsp; Staff: {ID_EXAMPLES.staff}
@@ -222,25 +414,30 @@ export default function Login() {
               </div>
               <div>
                 <label className="text-sm font-semibold text-ink">Bowen University email</label>
-                <div className="mt-2"><Field icon={Mail} type="email" placeholder="yourname@bowen.edu.ng" value={bowenEmail} onChange={setBowenEmail} /></div>
+                <div className="mt-2">
+                  <Field icon={Mail} type="email" placeholder="yourname@bowen.edu.ng"
+                    value={bowenEmail} onChange={setBowenEmail} />
+                </div>
                 <p className="mt-1.5 flex items-start gap-1.5 text-xs text-slate-400">
                   <ShieldCheck className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-                  Required to verify your identity and prevent fake IDs. We'll send a confirmation link here.
+                  Required to verify your identity. We'll send a confirmation link here.
                 </p>
               </div>
               <div>
                 <label className="text-sm font-semibold text-ink">Password</label>
                 <div className="mt-2">
-                  <Field icon={Lock} type={showPw ? "text" : "password"} placeholder="At least 6 characters" value={pw} onChange={setPw} right={eyeBtn} />
+                  <Field icon={Lock} type={showPw ? "text" : "password"}
+                    placeholder="At least 6 characters" value={pw} onChange={setPw} right={eyeBtn} />
                 </div>
               </div>
-              <button type="submit" disabled={loading} className="btn-primary w-full py-3.5 disabled:opacity-60">
+              <button type="submit" disabled={loading}
+                className="btn-primary w-full py-3.5 disabled:opacity-60">
                 {loading ? <RefreshCw className="h-4 w-4 animate-spin" /> : <><UserPlus className="h-4 w-4" /> Create Account</>}
               </button>
             </form>
           )}
 
-          {/* VERIFY */}
+          {/* VERIFY EMAIL after sign up */}
           {tab === "verify" && (
             <div className="mt-6 space-y-5 text-center">
               <div className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-emerald-50">
@@ -249,8 +446,9 @@ export default function Login() {
               <div>
                 <p className="font-display text-lg font-bold text-ink">Check your Bowen email</p>
                 <p className="mt-2 text-sm text-slate-500">
-                  We've sent a confirmation link to <span className="font-semibold text-ink">{bowenEmail}</span>.
-                  Click it to verify your identity, then come back and sign in with your ID.
+                  We've sent a confirmation link to{" "}
+                  <span className="font-semibold text-ink">{bowenEmail}</span>.
+                  Click it to verify, then come back and sign in.
                 </p>
               </div>
               <button type="button" onClick={() => { setTab("in"); setErr(""); setMsg(""); }}
@@ -258,114 +456,6 @@ export default function Login() {
                 Go to Sign In
               </button>
             </div>
-          )}
-
-          {/* STEP 1: FORGOT PASSWORD */}
-          {tab === "reset" && (
-            <form onSubmit={handleReset} className="mt-6 space-y-5">
-              <div className="text-center">
-                <div className="mx-auto grid h-12 w-12 place-items-center rounded-2xl bg-navy/10">
-                  <Mail className="h-6 w-6 text-navy" />
-                </div>
-                <p className="mt-3 font-display text-lg font-bold text-ink">Reset your password</p>
-                <p className="mt-1 text-sm text-slate-500">
-                  Enter your Bowen email. We'll send a 6-digit verification code.
-                </p>
-              </div>
-              <div>
-                <label className="text-sm font-semibold text-ink">Bowen University email</label>
-                <div className="mt-2"><Field icon={Mail} type="email" placeholder="yourname@bowen.edu.ng" value={resetEmail} onChange={setResetEmail} /></div>
-              </div>
-              <button type="submit" disabled={loading} className="btn-primary w-full py-3.5 disabled:opacity-60">
-                {loading ? <RefreshCw className="h-4 w-4 animate-spin" /> : "Send Verification Code"}
-              </button>
-              <button type="button" onClick={backToSignIn}
-                className="flex w-full items-center justify-center gap-1.5 text-sm font-semibold text-slate-500 hover:text-navy">
-                <ArrowLeft className="h-4 w-4" /> Back to Sign In
-              </button>
-              <p className="text-center text-xs text-slate-400">
-                Lost access to your Bowen email too? Ask an administrator to reset your password.
-              </p>
-            </form>
-          )}
-
-          {/* STEP 2: ENTER OTP */}
-          {tab === "otp" && (
-            <form onSubmit={handleVerifyOtp} className="mt-6 space-y-5">
-              <div className="text-center">
-                <div className="mx-auto grid h-12 w-12 place-items-center rounded-2xl bg-gold/20">
-                  <KeyRound className="h-6 w-6 text-gold-dark" />
-                </div>
-                <p className="mt-3 font-display text-lg font-bold text-ink">Enter verification code</p>
-                <p className="mt-1 text-sm text-slate-500">
-                  We sent a 6-digit code to{" "}
-                  <span className="font-semibold text-ink break-all">{resetEmail}</span>.
-                  Enter it below to continue.
-                </p>
-              </div>
-              <div>
-                <label className="text-sm font-semibold text-ink">6-digit code</label>
-                <div className="mt-2">
-                  <Field
-                    icon={KeyRound}
-                    type="text"
-                    placeholder="123456"
-                    value={otpCode}
-                    onChange={(v) => setOtpCode(v.replace(/\D/g, "").slice(0, 6))}
-                    mono
-                    maxLength={6}
-                  />
-                </div>
-                <p className="mt-1.5 text-xs text-slate-400">Check your spam folder if you don't see it. The code expires in 1 hour.</p>
-              </div>
-              <button type="submit" disabled={loading || otpCode.length !== 6} className="btn-primary w-full py-3.5 disabled:opacity-60">
-                {loading ? <RefreshCw className="h-4 w-4 animate-spin" /> : "Verify Code"}
-              </button>
-              <div className="flex items-center justify-between text-sm">
-                <button type="button" onClick={backToSignIn}
-                  className="flex items-center gap-1.5 font-semibold text-slate-500 hover:text-navy">
-                  <ArrowLeft className="h-4 w-4" /> Back
-                </button>
-                <button type="button" onClick={() => { setTab("reset"); setErr(""); setOtpCode(""); }}
-                  className="font-semibold text-gold-dark hover:underline">
-                  Resend code
-                </button>
-              </div>
-            </form>
-          )}
-
-          {/* STEP 3: SET NEW PASSWORD */}
-          {tab === "newpw" && (
-            <form onSubmit={handleUpdatePw} className="mt-6 space-y-5">
-              <div className="text-center">
-                <div className="mx-auto grid h-12 w-12 place-items-center rounded-2xl bg-emerald-50">
-                  <Lock className="h-6 w-6 text-emerald-600" />
-                </div>
-                <p className="mt-3 font-display text-lg font-bold text-ink">Set new password</p>
-                <p className="mt-1 text-sm text-slate-500">Choose a strong password for your account.</p>
-              </div>
-              <div>
-                <label className="text-sm font-semibold text-ink">New password</label>
-                <div className="mt-2">
-                  <Field icon={Lock} type={showPw ? "text" : "password"} placeholder="At least 6 characters" value={pw} onChange={setPw} right={eyeBtn} />
-                </div>
-              </div>
-              <div>
-                <label className="text-sm font-semibold text-ink">Confirm new password</label>
-                <div className="mt-2">
-                  <Field icon={Lock} type={showConfirmPw ? "text" : "password"} placeholder="Re-enter your password" value={confirmPw} onChange={setConfirmPw} right={confirmEyeBtn} />
-                </div>
-                {confirmPw && pw !== confirmPw && (
-                  <p className="mt-1.5 text-xs font-medium text-red-500">Passwords do not match</p>
-                )}
-                {confirmPw && pw === confirmPw && pw.length >= 6 && (
-                  <p className="mt-1.5 text-xs font-medium text-emerald-600">✓ Passwords match</p>
-                )}
-              </div>
-              <button type="submit" disabled={loading || pw.length < 6 || pw !== confirmPw} className="btn-primary w-full py-3.5 disabled:opacity-60">
-                {loading ? <RefreshCw className="h-4 w-4 animate-spin" /> : "Update Password"}
-              </button>
-            </form>
           )}
         </div>
 
