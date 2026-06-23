@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import {
   BarChart3, IdCard, Lock, Mail, Eye, EyeOff,
   UserPlus, LogIn, RefreshCw, ShieldCheck,
-  KeyRound, ArrowLeft, CheckCircle2
+  ArrowLeft, CheckCircle2
 } from "lucide-react";
 import {
   signIn, signUp, resetPasswordByRecoveryEmail,
@@ -11,6 +11,7 @@ import {
 } from "../lib/supabase.js";
 import { ID_EXAMPLES, formatIdInput } from "../lib/identity.js";
 
+/* ── Field component lives OUTSIDE Login so it never remounts on re-render ── */
 const Field = ({ icon: Icon, type, placeholder, value, onChange, right, mono, maxLength }) => (
   <div className="relative">
     <Icon className="pointer-events-none absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
@@ -28,7 +29,44 @@ const Field = ({ icon: Icon, type, placeholder, value, onChange, right, mono, ma
   </div>
 );
 
-// tabs: "in" | "up" | "verify" | "reset" | "otp" | "newpw" | "done"
+/* ── ResetCard lives OUTSIDE Login so it never remounts on re-render ── */
+function ResetCard({ children, onBack, err }) {
+  return (
+    <div className="bg-dotted relative flex min-h-screen items-center justify-center px-4 py-12">
+      <div className="w-full max-w-md">
+        <button
+          onClick={onBack}
+          className="mb-6 flex items-center gap-2 text-sm font-semibold text-slate-500 hover:text-navy"
+        >
+          <ArrowLeft className="h-4 w-4" /> Back to Sign In
+        </button>
+
+        <div className="card p-8">
+          {/* Brand */}
+          <div className="mb-6 flex items-center gap-3">
+            <div className="grid h-11 w-11 place-items-center rounded-xl bg-navy">
+              <BarChart3 className="h-5 w-5 text-gold" />
+            </div>
+            <div>
+              <p className="font-display text-base font-extrabold leading-none text-ink">OptiMeal BI</p>
+              <p className="text-xs font-medium text-emerald-600">Password Recovery</p>
+            </div>
+          </div>
+
+          {err && (
+            <p className="mb-4 rounded-lg bg-red-50 px-4 py-2.5 text-sm font-medium text-red-600">{err}</p>
+          )}
+
+          {children}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ══════════════════════════════════════════════════════════════
+   MAIN COMPONENT
+══════════════════════════════════════════════════════════════ */
 export default function Login() {
   const navigate = useNavigate();
   const [tab, setTab]                     = useState("in");
@@ -148,43 +186,11 @@ export default function Login() {
 
   function backToSignIn() { setTab("in"); setErr(""); setMsg(""); setOtpCode(""); }
 
-  /* ── Shared card wrapper for the reset flow steps ── */
-  const ResetCard = ({ children }) => (
-    <div className="bg-dotted relative flex min-h-screen items-center justify-center px-4 py-12">
-      <div className="w-full max-w-md">
-        {/* Back link */}
-        <button onClick={backToSignIn}
-          className="mb-6 flex items-center gap-2 text-sm font-semibold text-slate-500 hover:text-navy">
-          <ArrowLeft className="h-4 w-4" /> Back to Sign In
-        </button>
-
-        <div className="card p-8">
-          {/* Brand */}
-          <div className="mb-6 flex items-center gap-3">
-            <div className="grid h-11 w-11 place-items-center rounded-xl bg-navy">
-              <BarChart3 className="h-5 w-5 text-gold" />
-            </div>
-            <div>
-              <p className="font-display text-base font-extrabold leading-none text-ink">OptiMeal BI</p>
-              <p className="text-xs font-medium text-emerald-600">Password Recovery</p>
-            </div>
-          </div>
-
-          {err && (
-            <p className="mb-4 rounded-lg bg-red-50 px-4 py-2.5 text-sm font-medium text-red-600">{err}</p>
-          )}
-
-          {children}
-        </div>
-      </div>
-    </div>
-  );
-
   /* ══════════════════════════════════════════════
      RESET STEP 1 — Enter email
   ══════════════════════════════════════════════ */
   if (tab === "reset") return (
-    <ResetCard>
+    <ResetCard onBack={backToSignIn} err={err}>
       <h2 className="font-display text-2xl font-bold text-ink">Forgot your password?</h2>
       <p className="mt-1 mb-6 text-sm text-slate-500">
         No worries! Enter your email and we'll send you a reset code.
@@ -192,14 +198,22 @@ export default function Login() {
       <form onSubmit={handleReset} className="space-y-4">
         <div>
           <label className="mb-1.5 block text-sm font-semibold text-ink">Email Address</label>
-          <Field icon={Mail} type="email" placeholder="yourname@bowen.edu.ng"
-            value={resetEmail} onChange={setResetEmail} />
+          <div className="relative">
+            <Mail className="pointer-events-none absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
+            <input
+              type="email"
+              className="field pl-11"
+              placeholder="yourname@bowen.edu.ng"
+              value={resetEmail}
+              onChange={(e) => setResetEmail(e.target.value)}
+              autoComplete="email"
+              autoCapitalize="off"
+            />
+          </div>
         </div>
         <button type="submit" disabled={loading || !resetEmail}
           className="btn-primary w-full py-3.5 disabled:opacity-60">
-          {loading
-            ? <RefreshCw className="h-4 w-4 animate-spin" />
-            : "Send Reset Code →"}
+          {loading ? <RefreshCw className="h-4 w-4 animate-spin" /> : "Send Reset Code →"}
         </button>
       </form>
     </ResetCard>
@@ -209,38 +223,34 @@ export default function Login() {
      RESET STEP 2 — Enter 6-digit OTP
   ══════════════════════════════════════════════ */
   if (tab === "otp") return (
-    <ResetCard>
+    <ResetCard onBack={backToSignIn} err={err}>
       <h2 className="font-display text-2xl font-bold text-ink">Check your email</h2>
       <p className="mt-1 mb-1 text-sm text-slate-600">
         A reset code was sent to{" "}
         <span className="font-semibold text-ink">{resetEmail}</span>
       </p>
       <p className="mb-6 text-xs text-emerald-600 font-medium">
-        The code expires in 15 minutes. Check your spam folder if you don't see it.
+        The code expires in 1 hour. Check your spam folder if you don't see it.
       </p>
 
       <form onSubmit={handleVerifyOtp} className="space-y-4">
         <div>
           <label className="mb-1.5 block text-sm font-semibold text-ink">6-digit Reset Code</label>
-          <div className="relative">
-            <input
-              type="text"
-              inputMode="numeric"
-              className="field text-center font-mono text-2xl tracking-[0.5em] py-4"
-              placeholder="000000"
-              value={otpCode}
-              onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
-              maxLength={6}
-              autoComplete="one-time-code"
-            />
-          </div>
+          <input
+            type="text"
+            inputMode="numeric"
+            className="field text-center font-mono text-2xl tracking-[0.5em] py-4"
+            placeholder="000000"
+            value={otpCode}
+            onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+            maxLength={6}
+            autoComplete="one-time-code"
+          />
         </div>
 
         <button type="submit" disabled={loading || otpCode.length !== 6}
           className="btn-primary w-full py-3.5 disabled:opacity-60">
-          {loading
-            ? <RefreshCw className="h-4 w-4 animate-spin" />
-            : "Verify Code →"}
+          {loading ? <RefreshCw className="h-4 w-4 animate-spin" /> : "Verify Code →"}
         </button>
 
         <button type="button"
@@ -256,7 +266,7 @@ export default function Login() {
      RESET STEP 3 — Set new password
   ══════════════════════════════════════════════ */
   if (tab === "newpw") return (
-    <ResetCard>
+    <ResetCard onBack={backToSignIn} err={err}>
       <h2 className="font-display text-2xl font-bold text-ink">Set new password</h2>
       <p className="mt-1 mb-6 text-sm text-slate-500">
         Choose a strong password you haven't used before.
@@ -265,13 +275,31 @@ export default function Login() {
       <form onSubmit={handleUpdatePw} className="space-y-4">
         <div>
           <label className="mb-1.5 block text-sm font-semibold text-ink">New Password</label>
-          <Field icon={Lock} type={showPw ? "text" : "password"}
-            placeholder="At least 6 characters" value={pw} onChange={setPw} right={eyeBtn} />
+          <div className="relative">
+            <Lock className="pointer-events-none absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
+            <input
+              type={showPw ? "text" : "password"}
+              className="field pl-11 pr-11"
+              placeholder="At least 6 characters"
+              value={pw}
+              onChange={(e) => setPw(e.target.value)}
+            />
+            {eyeBtn}
+          </div>
         </div>
         <div>
           <label className="mb-1.5 block text-sm font-semibold text-ink">Confirm New Password</label>
-          <Field icon={Lock} type={showConfirmPw ? "text" : "password"}
-            placeholder="Repeat password" value={confirmPw} onChange={setConfirmPw} right={confirmEyeBtn} />
+          <div className="relative">
+            <Lock className="pointer-events-none absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
+            <input
+              type={showConfirmPw ? "text" : "password"}
+              className="field pl-11 pr-11"
+              placeholder="Repeat password"
+              value={confirmPw}
+              onChange={(e) => setConfirmPw(e.target.value)}
+            />
+            {confirmEyeBtn}
+          </div>
           {confirmPw && pw !== confirmPw && (
             <p className="mt-1.5 text-xs font-medium text-red-500">Passwords do not match</p>
           )}
@@ -283,9 +311,7 @@ export default function Login() {
         <button type="submit"
           disabled={loading || pw.length < 6 || pw !== confirmPw}
           className="btn-primary w-full py-3.5 disabled:opacity-60">
-          {loading
-            ? <RefreshCw className="h-4 w-4 animate-spin" />
-            : "Reset Password →"}
+          {loading ? <RefreshCw className="h-4 w-4 animate-spin" /> : "Reset Password →"}
         </button>
       </form>
     </ResetCard>
@@ -298,7 +324,6 @@ export default function Login() {
     <div className="bg-dotted relative flex min-h-screen items-center justify-center px-4 py-12">
       <div className="w-full max-w-md">
         <div className="card p-8 text-center">
-          {/* Brand */}
           <div className="mb-6 flex items-center justify-center gap-3">
             <div className="grid h-11 w-11 place-items-center rounded-xl bg-navy">
               <BarChart3 className="h-5 w-5 text-gold" />
@@ -308,7 +333,6 @@ export default function Login() {
               <p className="text-xs font-medium text-emerald-600">Password Recovery</p>
             </div>
           </div>
-
           <div className="mx-auto mb-4 grid h-16 w-16 place-items-center rounded-full bg-emerald-50">
             <CheckCircle2 className="h-8 w-8 text-emerald-500" />
           </div>
@@ -362,9 +386,17 @@ export default function Login() {
               <div>
                 <label className="text-sm font-semibold text-ink">Matric / Staff ID</label>
                 <div className="mt-2">
-                  <Field icon={IdCard}
-                    placeholder={`${ID_EXAMPLES.student} or ${ID_EXAMPLES.staff}`}
-                    value={idNumber} onChange={(v) => setIdNumber(formatIdInput(v))} mono={false} />
+                  <div className="relative">
+                    <IdCard className="pointer-events-none absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
+                    <input
+                      type="text"
+                      className="field pl-11 font-mono tracking-wide"
+                      placeholder={`${ID_EXAMPLES.student} or ${ID_EXAMPLES.staff}`}
+                      value={idNumber}
+                      onChange={(e) => setIdNumber(formatIdInput(e.target.value))}
+                      autoComplete="off"
+                    />
+                  </div>
                 </div>
               </div>
               <div>
@@ -376,9 +408,16 @@ export default function Login() {
                     Forgot password?
                   </button>
                 </div>
-                <div className="mt-2">
-                  <Field icon={Lock} type={showPw ? "text" : "password"}
-                    placeholder="••••••••" value={pw} onChange={setPw} right={eyeBtn} />
+                <div className="mt-2 relative">
+                  <Lock className="pointer-events-none absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
+                  <input
+                    type={showPw ? "text" : "password"}
+                    className="field pl-11 pr-11"
+                    placeholder="••••••••"
+                    value={pw}
+                    onChange={(e) => setPw(e.target.value)}
+                  />
+                  {eyeBtn}
                 </div>
               </div>
               <button type="submit" disabled={loading}
@@ -397,16 +436,30 @@ export default function Login() {
             <form onSubmit={handleSignUp} className="mt-6 space-y-5">
               <div>
                 <label className="text-sm font-semibold text-ink">Full name</label>
-                <div className="mt-2">
-                  <Field icon={UserPlus} placeholder="Omosebi Marvellous" value={name} onChange={setName} />
+                <div className="mt-2 relative">
+                  <UserPlus className="pointer-events-none absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
+                  <input
+                    type="text"
+                    className="field pl-11"
+                    placeholder="Omosebi Marvellous"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    autoComplete="off"
+                  />
                 </div>
               </div>
               <div>
                 <label className="text-sm font-semibold text-ink">Matric / Staff ID</label>
-                <div className="mt-2">
-                  <Field icon={IdCard}
+                <div className="mt-2 relative">
+                  <IdCard className="pointer-events-none absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
+                  <input
+                    type="text"
+                    className="field pl-11 font-mono tracking-wide"
                     placeholder={`${ID_EXAMPLES.student} or ${ID_EXAMPLES.staff}`}
-                    value={idNumber} onChange={(v) => setIdNumber(formatIdInput(v))} mono={false} />
+                    value={idNumber}
+                    onChange={(e) => setIdNumber(formatIdInput(e.target.value))}
+                    autoComplete="off"
+                  />
                 </div>
                 <p className="mt-1.5 text-xs text-slate-400">
                   Student: {ID_EXAMPLES.student} &nbsp;·&nbsp; Staff: {ID_EXAMPLES.staff}
@@ -414,9 +467,16 @@ export default function Login() {
               </div>
               <div>
                 <label className="text-sm font-semibold text-ink">Bowen University email</label>
-                <div className="mt-2">
-                  <Field icon={Mail} type="email" placeholder="yourname@bowen.edu.ng"
-                    value={bowenEmail} onChange={setBowenEmail} />
+                <div className="mt-2 relative">
+                  <Mail className="pointer-events-none absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
+                  <input
+                    type="email"
+                    className="field pl-11"
+                    placeholder="yourname@bowen.edu.ng"
+                    value={bowenEmail}
+                    onChange={(e) => setBowenEmail(e.target.value)}
+                    autoComplete="email"
+                  />
                 </div>
                 <p className="mt-1.5 flex items-start gap-1.5 text-xs text-slate-400">
                   <ShieldCheck className="mt-0.5 h-3.5 w-3.5 shrink-0" />
@@ -425,9 +485,16 @@ export default function Login() {
               </div>
               <div>
                 <label className="text-sm font-semibold text-ink">Password</label>
-                <div className="mt-2">
-                  <Field icon={Lock} type={showPw ? "text" : "password"}
-                    placeholder="At least 6 characters" value={pw} onChange={setPw} right={eyeBtn} />
+                <div className="mt-2 relative">
+                  <Lock className="pointer-events-none absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
+                  <input
+                    type={showPw ? "text" : "password"}
+                    className="field pl-11 pr-11"
+                    placeholder="At least 6 characters"
+                    value={pw}
+                    onChange={(e) => setPw(e.target.value)}
+                  />
+                  {eyeBtn}
                 </div>
               </div>
               <button type="submit" disabled={loading}
