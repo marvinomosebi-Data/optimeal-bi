@@ -189,7 +189,7 @@ export default function Login() {
   /* ══════════════════════════════════════════════
      RESET STEP 1 — Enter email
   ══════════════════════════════════════════════ */
-  iif (tab === "reset") return (
+  if (tab === "reset") return (
     <ResetCard onBack={backToSignIn} err={err}>
       <h2 className="font-display text-2xl font-bold text-ink">Forgot your password?</h2>
       <p className="mt-1 mb-6 text-sm text-slate-500">
