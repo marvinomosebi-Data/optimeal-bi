@@ -3,6 +3,7 @@ import { Topbar } from "../components/Topbar.jsx";
 import { Footer } from "./Optimizer.jsx";
 import { CAFETERIAS, STANDARD_MENU } from "../data/dataset.js";
 import { isSupabaseConfigured } from "../lib/supabase.js";
+import { useNotifications } from "../lib/notifications.jsx";
 import {
   getPriceSummary, getIndexSnapshot, submitNbsPrices, fetchRecentNbsEntries,
   getStudentImpact, fetchAllFoodItems, updateFoodItemPrice,

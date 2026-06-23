@@ -4,32 +4,57 @@
 @tailwind components;
 @tailwind utilities;
 
-:root { color-scheme: light; }
+/* ── Dark mode via class on <html> ── */
+:root {
+  color-scheme: light;
+  --bg:        #f7f8fa;
+  --surface:   #ffffff;
+  --border:    rgba(203,213,225,0.8);
+  --ink:       #0f172a;
+  --ink2:      #475569;
+  --ink3:      #94a3b8;
+  --navy:      #0B1F3A;
+  --gold:      #F5C84B;
+}
+.dark {
+  color-scheme: dark;
+  --bg:        #0f172a;
+  --surface:   #1e293b;
+  --border:    rgba(51,65,85,0.8);
+  --ink:       #f1f5f9;
+  --ink2:      #94a3b8;
+  --ink3:      #475569;
+}
+
 html, body, #root { height: 100%; }
 html { overflow-x: hidden; }
 body {
   margin: 0;
   font-family: "DM Sans", system-ui, sans-serif;
-  background-color: #f7f8fa;
-  color: #0f172a;
+  background-color: var(--bg);
+  color: var(--ink);
   -webkit-font-smoothing: antialiased;
   overflow-x: hidden;
   max-width: 100vw;
+  transition: background-color 0.2s, color 0.2s;
 }
 
 .bg-dotted {
   background-image: radial-gradient(circle, #d6dae2 1px, transparent 1px);
   background-size: 22px 22px;
 }
+.dark .bg-dotted {
+  background-image: radial-gradient(circle, #1e293b 1px, transparent 1px);
+}
 
 @layer components {
-  .card { @apply bg-white rounded-2xl border border-slate-200/80 shadow-card; }
+  .card        { @apply bg-white dark:bg-slate-800 rounded-2xl border border-slate-200/80 dark:border-slate-700/80 shadow-card; }
   .btn-primary { @apply inline-flex items-center justify-center gap-2 rounded-xl bg-navy px-5 py-3 text-sm font-semibold text-white transition hover:bg-navy-800 disabled:opacity-50; }
-  .btn-gold { @apply inline-flex items-center justify-center gap-2 rounded-xl bg-gold px-5 py-3 text-sm font-semibold text-navy-900 transition hover:bg-gold-dark hover:text-white; }
-  .field { @apply w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm outline-none transition focus:border-navy focus:ring-2 focus:ring-navy/15 placeholder:text-slate-400; }
-  .nav-link { @apply flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium text-slate-600 transition hover:bg-slate-100; }
+  .btn-gold    { @apply inline-flex items-center justify-center gap-2 rounded-xl bg-gold px-5 py-3 text-sm font-semibold text-navy-900 transition hover:bg-gold-dark hover:text-white; }
+  .field       { @apply w-full rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 px-4 py-3 text-sm text-ink dark:text-slate-100 outline-none transition focus:border-navy focus:ring-2 focus:ring-navy/15 placeholder:text-slate-400; }
+  .nav-link    { @apply flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium text-slate-600 dark:text-slate-300 transition hover:bg-slate-100 dark:hover:bg-slate-700; }
   .nav-link-active { @apply bg-gold text-navy-900 hover:bg-gold; }
-  .chip { @apply inline-flex items-center rounded-md px-3 py-1 text-xs font-semibold transition; }
+  .chip        { @apply inline-flex items-center rounded-md px-3 py-1 text-xs font-semibold transition; }
 }
 
 @media (prefers-reduced-motion: reduce) {
