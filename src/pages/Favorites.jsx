@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Topbar } from "../components/Topbar.jsx";
 import { Footer } from "./Optimizer.jsx";
 import { fetchSavedPlans, deleteSavedPlan, isSupabaseConfigured } from "../lib/supabase.js";
 import { useAuth } from "../lib/auth.jsx";

@@ -1,6 +1,5 @@
 import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { Topbar } from "../components/Topbar.jsx";
 import { CAFETERIAS, getCheapestMealCost, getMenuForCafeteria, CATEGORIES, MEAL_TYPES } from "../data/dataset.js";
 import { optimizeMeal } from "../lib/optimizer.js";
 import { Star, MapPin, TrendingDown, TrendingUp, Minus, ChevronRight, Sunrise, Sun, Moon, Utensils } from "lucide-react";

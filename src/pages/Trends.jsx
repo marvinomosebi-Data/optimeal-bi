@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from "react";
-import { Topbar } from "../components/Topbar.jsx";
 import { Footer } from "./Optimizer.jsx";
 import { getBlendedIndex, getIndexSnapshot, getPriceSummary, getAllSeriesNames, getPriceSeries } from "../lib/dataService.js";
 import { CAFETERIAS, getMenuForCafeteria } from "../data/dataset.js";

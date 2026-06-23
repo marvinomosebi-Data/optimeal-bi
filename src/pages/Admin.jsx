@@ -1,5 +1,4 @@
 import { useState, useEffect, useMemo } from "react";
-import { Topbar } from "../components/Topbar.jsx";
 import { Footer } from "./Optimizer.jsx";
 import { CAFETERIAS, STANDARD_MENU } from "../data/dataset.js";
 import { isSupabaseConfigured } from "../lib/supabase.js";

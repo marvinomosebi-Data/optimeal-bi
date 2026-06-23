@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { Topbar } from "../components/Topbar.jsx";
 import { Footer } from "./Optimizer.jsx";
 import { fetchMenu, fetchCafeterias } from "../lib/dataService.js";
 import { saveMealPlan, isSupabaseConfigured } from "../lib/supabase.js";
