@@ -180,7 +180,6 @@ export default function Result() {
 
   return (
     <>
-      <Topbar title="Your Optimal Meal" searchPlaceholder="Search menus..." />
       <div className="mx-auto max-w-7xl px-4 py-6 lg:px-8 overflow-x-hidden w-full">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
