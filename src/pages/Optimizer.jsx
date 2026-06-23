@@ -40,7 +40,7 @@ export default function Optimizer() {
   const [menu, setMenu]         = useState([]);
   const [prefs, setPrefs]       = useState({});
 
-  const mealLabel = MEAL_TYPES[initMeal?.toUpperCase()]?.label || "Meal";
+  const mealLabel = Object.values(MEAL_TYPES).find(m => m.key === initMeal)?.label || "Meal";
 
   useEffect(() => { fetchCafeterias().then(setCafes); }, []);
   useEffect(() => { fetchMenu(cafeId).then(setMenu); setPrefs({}); }, [cafeId]);
