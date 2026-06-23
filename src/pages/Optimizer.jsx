@@ -5,7 +5,7 @@ import { fetchCafeterias, fetchMenu } from "../lib/dataService.js";
 import { optimizeMeal } from "../lib/optimizer.js";
 import { useAuth } from "../lib/auth.jsx";
 import { CATEGORIES, MEAL_TYPES } from "../data/dataset.js";
-import { Leaf, Utensils, Soup, Zap, Info, ArrowLeft, Flame } from "lucide-react";
+import { Leaf, Utensils, Soup, Zap, Info, ArrowLeft, Flame, MapPin } from "lucide-react";
 
 const APPETITE_OPTS = [
   { key: "Light",  icon: Leaf,     desc: "Light eater" },
