@@ -236,6 +236,7 @@ function CampusPriceRegulation({ refreshKey, bumpRefresh }) {
                   {filteredItems.map((item) => (
                     <PriceRow key={item.id} item={item} onSave={async (newPrice) => {
                       await updateFoodItemPrice(item.id, newPrice);
+                      try { localStorage.setItem("optimeal_prices_last_updated", String(Date.now())); } catch(_) {}
                       bumpRefresh();
                     }} />
                   ))}
@@ -307,6 +308,8 @@ function PriceUpdateForm({ onSuccess }) {
       await submitNbsPrices(rows);
       setSavedCount(rows.length);
       setStatus("ok"); setPrices({});
+      // Mark prices as updated for notification system
+      try { localStorage.setItem("optimeal_prices_last_updated", String(Date.now())); } catch(_) {}
       onSuccess?.();
     } catch (ex) {
       setErrMsg(ex.message || "Submission failed. Check your connection.");

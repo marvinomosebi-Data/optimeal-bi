@@ -1,9 +1,23 @@
 import { NavLink, useNavigate } from "react-router-dom";
 import {
   UtensilsCrossed, Heart, TrendingUp, ShieldCheck,
-  BarChart3, LogOut, X, CalendarDays, BarChart2
+  LogOut, X, CalendarDays, BarChart2
 } from "lucide-react";
 import { useAuth } from "../lib/auth.jsx";
+
+function Logo() {
+  return (
+    <svg width="40" height="40" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <rect width="40" height="40" rx="10" fill="#0B1F3A"/>
+      <ellipse cx="20" cy="26" rx="10" ry="4" fill="none" stroke="#F5C84B" strokeWidth="2"/>
+      <path d="M10 26 Q10 34 20 34 Q30 34 30 26" fill="#F5C84B" fillOpacity="0.25" stroke="#F5C84B" strokeWidth="1.5"/>
+      <path d="M11 10 L11 24 L18 24" stroke="#F5C84B" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+      <rect x="22" y="14" width="3" height="8" rx="1" fill="#F5C84B" opacity="0.9"/>
+      <rect x="26.5" y="11" width="3" height="11" rx="1" fill="#F5C84B"/>
+      <rect x="31" y="16" width="3" height="6" rx="1" fill="#F5C84B" opacity="0.7"/>
+    </svg>
+  );
+}
 
 export default function Sidebar({ open, onClose, onLogout }) {
   const { role, session } = useAuth();
@@ -31,20 +45,18 @@ export default function Sidebar({ open, onClose, onLogout }) {
 
       {/* Drawer — slides in on mobile, always visible on lg */}
       <aside className={`
-        fixed inset-y-0 left-0 z-40 w-72 flex flex-col bg-white dark:bg-slate-900
-        border-r border-slate-200 dark:border-slate-700
+        fixed inset-y-0 left-0 z-40 w-72 flex flex-col bg-white dark:bg-gray-900
+        border-r border-slate-200 dark:border-gray-700
         transform transition-transform duration-300 ease-in-out
         ${open ? "translate-x-0" : "-translate-x-full"}
         lg:relative lg:translate-x-0 lg:z-auto lg:w-64 lg:shrink-0
       `}>
         {/* Header */}
-        <div className="flex items-center justify-between px-5 py-5 border-b border-slate-100 dark:border-slate-700">
+        <div className="flex items-center justify-between px-5 py-5 border-b border-slate-100 dark:border-gray-700">
           <div className="flex items-center gap-3">
-            <div className="grid h-10 w-10 place-items-center rounded-xl bg-navy">
-              <BarChart3 className="h-5 w-5 text-gold" />
-            </div>
+            <Logo />
             <div>
-              <p className="font-display text-base font-extrabold leading-none text-ink dark:text-slate-100">OptiMeal BI</p>
+              <p className="font-display text-base font-extrabold leading-none text-ink dark:text-gray-100">OptiMeal BI</p>
               <p className="text-xs text-slate-400">Bowen University</p>
             </div>
           </div>
@@ -64,14 +76,14 @@ export default function Sidebar({ open, onClose, onLogout }) {
                 `flex items-center gap-3 rounded-xl px-3 py-3 transition group ${
                   isActive
                     ? "bg-gold text-navy-900"
-                    : "text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
+                    : "text-slate-600 dark:text-gray-300 hover:bg-slate-100 dark:hover:bg-gray-800"
                 }`
               }
             >
               {({ isActive }) => (
                 <>
                   <div className={`grid h-9 w-9 shrink-0 place-items-center rounded-lg ${
-                    isActive ? "bg-navy/10" : "bg-slate-100 dark:bg-slate-800 group-hover:bg-slate-200 dark:group-hover:bg-slate-700"
+                    isActive ? "bg-navy/10" : "bg-slate-100 dark:bg-gray-800 group-hover:bg-slate-200 dark:group-hover:bg-slate-700"
                   }`}>
                     <Icon className={`h-4 w-4 ${isActive ? "text-navy" : "text-slate-500 dark:text-slate-400"}`} />
                   </div>
@@ -86,7 +98,7 @@ export default function Sidebar({ open, onClose, onLogout }) {
         </nav>
 
         {/* Sign out */}
-        <div className="px-3 py-4 border-t border-slate-100 dark:border-slate-700">
+        <div className="px-3 py-4 border-t border-slate-100 dark:border-gray-700">
           <button
             onClick={() => { onClose(); onLogout(); }}
             className="flex w-full items-center gap-3 rounded-xl px-3 py-3 text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 transition"
