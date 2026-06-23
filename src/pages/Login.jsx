@@ -189,7 +189,7 @@ export default function Login() {
   /* ══════════════════════════════════════════════
      RESET STEP 1 — Enter email
   ══════════════════════════════════════════════ */
-  if (tab === "reset") return (
+  iif (tab === "reset") return (
     <ResetCard onBack={backToSignIn} err={err}>
       <h2 className="font-display text-2xl font-bold text-ink">Forgot your password?</h2>
       <p className="mt-1 mb-6 text-sm text-slate-500">
@@ -197,22 +197,31 @@ export default function Login() {
       </p>
       <form onSubmit={handleReset} className="space-y-4">
         <div>
-          <label className="mb-1.5 block text-sm font-semibold text-ink">Email Address</label>
+          <label htmlFor="reset-email" className="mb-1.5 block text-sm font-semibold text-ink">
+            Email Address
+          </label>
           <div className="relative">
             <Mail className="pointer-events-none absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
             <input
+              id="reset-email"
+              name="reset-email"
               type="email"
               className="field pl-11"
               placeholder="yourname@bowen.edu.ng"
               value={resetEmail}
               onChange={(e) => setResetEmail(e.target.value)}
               autoComplete="email"
-              autoCapitalize="off"
+              autoCorrect="off"
+              autoCapitalize="none"
+              spellCheck="false"
             />
           </div>
         </div>
-        <button type="submit" disabled={loading || !resetEmail}
-          className="btn-primary w-full py-3.5 disabled:opacity-60">
+        <button
+          type="submit"
+          disabled={loading || !resetEmail}
+          className="btn-primary w-full py-3.5 disabled:opacity-60"
+        >
           {loading ? <RefreshCw className="h-4 w-4 animate-spin" /> : "Send Reset Code →"}
         </button>
       </form>
