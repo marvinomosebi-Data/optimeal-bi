@@ -86,25 +86,13 @@ export async function signOut() {
   await supabase.auth.signOut();
 }
 
-// Step 1: sends a 6-digit OTP to the user's email
+// Sends a password reset link to the user's email
 export async function resetPasswordByRecoveryEmail(bowenEmail) {
   if (!supabase) throw new Error("Supabase not configured");
   const { error } = await supabase.auth.resetPasswordForEmail(bowenEmail, {
-    redirectTo: window.location.origin + "/",
+    redirectTo: "https://optimeal-bi.vercel.app/",
   });
   if (error) throw error;
-}
-
-// Step 2: verify the 6-digit OTP the user received
-export async function verifyPasswordResetOtp(bowenEmail, token) {
-  if (!supabase) throw new Error("Supabase not configured");
-  const { data, error } = await supabase.auth.verifyOtp({
-    email: bowenEmail,
-    token,
-    type: "recovery",
-  });
-  if (error) throw error;
-  return data;
 }
 
 export async function getSession() {
