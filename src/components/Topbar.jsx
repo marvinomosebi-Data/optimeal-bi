@@ -8,8 +8,8 @@ export function Topbar({ title }) {
     ?.split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase() || "G";
 
   return (
-    <header className="sticky top-0 z-20 flex items-center gap-4 border-b border-slate-200 bg-slatebg/80 px-5 py-4 backdrop-blur lg:px-8">
-      <h1 className="font-display text-xl font-bold text-ink lg:text-2xl">{title}</h1>
+    <header className="sticky top-0 z-20 flex items-center gap-4 border-b border-slate-200 bg-slatebg/80 px-4 py-4 backdrop-blur lg:px-8 overflow-hidden min-w-0">
+      <h1 className="font-display text-xl font-bold text-ink lg:text-2xl truncate min-w-0">{title}</h1>
       <div className="ml-auto flex items-center gap-3">
         {role === "admin" && (
           <span className="hidden rounded-full bg-gold px-3 py-1 text-xs font-bold text-navy-900 sm:inline">

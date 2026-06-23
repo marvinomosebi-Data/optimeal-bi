@@ -445,7 +445,7 @@ export default function Admin() {
   return (
     <>
       <Topbar title="Admin Portal" />
-      <div className="mx-auto max-w-7xl px-5 py-6 lg:px-8 space-y-6">
+      <div className="mx-auto max-w-7xl px-4 py-6 lg:px-8 space-y-6 overflow-x-hidden w-full">
 
         {/* KPI strip */}
         <div className="grid gap-5 sm:grid-cols-2 md:grid-cols-4">

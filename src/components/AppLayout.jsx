@@ -13,9 +13,9 @@ export default function AppLayout() {
   }
 
   return (
-    <div className="flex min-h-screen bg-slatebg">
+    <div className="flex min-h-screen bg-slatebg overflow-x-hidden">
       <Sidebar onUpdatePrices={() => navigate("/app/trends")} onLogout={handleLogout} />
-      <main className="flex-1 pb-16 lg:pb-0">
+      <main className="flex-1 min-w-0 pb-16 lg:pb-0 overflow-x-hidden">
         <Outlet />
       </main>
       <MobileNav onLogout={handleLogout} />

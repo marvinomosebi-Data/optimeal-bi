@@ -7,13 +7,6 @@ const key  = import.meta.env.VITE_SUPABASE_ANON_KEY;
 export const isSupabaseConfigured = Boolean(url && key);
 export const supabase = isSupabaseConfigured ? createClient(url, key) : null;
 
-/* ── Auth — the bowen.edu.ng email IS the real Supabase Auth identity now,
-      so sign-up uses Supabase's native, standard email-confirmation flow
-      (real inbox delivery, no extra steps). The person still only ever
-      TYPES their Matric/Staff ID though — a small lookup table (id_lookup)
-      resolves "ID -> bowen email" before signing in, since the client can't
-      query auth.users directly to find it. ── */
-
 export async function signIn(idNumber, password) {
   if (!supabase) throw new Error("Supabase not configured");
   const check = validateId(idNumber);
@@ -55,17 +48,15 @@ export async function signUp(idNumber, password, fullName, bowenEmail) {
 
   const cleanId = idNumber.trim().toUpperCase();
 
-  // The bowen email IS the Supabase Auth email — this triggers Supabase's
-  // standard, reliable confirmation-link email, sent to the real inbox.
   const { data, error } = await supabase.auth.signUp({
     email: emailCheck.email,
     password,
     options: {
       data: {
         full_name: fullName,
-        role: "student", // public sign-up is always student
+        role: "student",
         id_number: cleanId,
-        id_role_hint: idCheck.role, // "student" | "staff" — does NOT grant admin
+        id_role_hint: idCheck.role,
       },
     },
   });
@@ -76,8 +67,6 @@ export async function signUp(idNumber, password, fullName, bowenEmail) {
     throw error;
   }
 
-  // Record the ID -> email mapping so sign-in-by-ID can resolve it later.
-  // Safe to do without a session — the insert policy allows it.
   const { error: lookupErr } = await supabase.from("id_lookup").insert({
     id_number: cleanId,
     bowen_email: emailCheck.email,
@@ -87,7 +76,6 @@ export async function signUp(idNumber, password, fullName, bowenEmail) {
     if (lookupErr.message?.toLowerCase().includes("duplicate")) {
       throw new Error("This ID is already registered. Try signing in instead.");
     }
-    // Non-fatal otherwise — the auth account exists either way.
   }
 
   return data;
@@ -98,14 +86,25 @@ export async function signOut() {
   await supabase.auth.signOut();
 }
 
-// Password recovery uses the verified bowen.edu.ng email directly — it's
-// now the actual Auth email, so Supabase's standard reset flow just works.
+// Step 1: sends a 6-digit OTP to the user's email
 export async function resetPasswordByRecoveryEmail(bowenEmail) {
   if (!supabase) throw new Error("Supabase not configured");
   const { error } = await supabase.auth.resetPasswordForEmail(bowenEmail, {
-    redirectTo: window.location.origin + "/?recovery=1",
+    redirectTo: window.location.origin + "/",
   });
   if (error) throw error;
+}
+
+// Step 2: verify the 6-digit OTP the user received
+export async function verifyPasswordResetOtp(bowenEmail, token) {
+  if (!supabase) throw new Error("Supabase not configured");
+  const { data, error } = await supabase.auth.verifyOtp({
+    email: bowenEmail,
+    token,
+    type: "recovery",
+  });
+  if (error) throw error;
+  return data;
 }
 
 export async function getSession() {
@@ -119,8 +118,6 @@ export async function getRole() {
   const { data } = await supabase.auth.getUser();
   return data?.user?.user_metadata?.role ?? "student";
 }
-
-/* ── Saved meal plans / Favorites ── */
 
 export async function saveMealPlan({ planName, cafeId, cafeName, budget, appetite, items, totalCost, satietyScore }) {
   if (!supabase) throw new Error("Supabase not configured");

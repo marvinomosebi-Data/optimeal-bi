@@ -182,7 +182,7 @@ export default function Result() {
   return (
     <>
       <Topbar title="Your Optimal Meal" searchPlaceholder="Search menus..." />
-      <div className="mx-auto max-w-7xl px-5 py-6 lg:px-8">
+      <div className="mx-auto max-w-7xl px-4 py-6 lg:px-8 overflow-x-hidden w-full">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h2 className="font-display text-3xl font-extrabold text-ink lg:text-4xl">Your Optimal Meal</h2>

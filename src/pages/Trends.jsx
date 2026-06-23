@@ -84,7 +84,7 @@ export default function Trends() {
   return (
     <>
       <Topbar title="Price Analytics" hasAlert />
-      <div className="mx-auto max-w-7xl px-5 py-6 lg:px-8">
+      <div className="mx-auto max-w-7xl px-4 py-6 lg:px-8 overflow-x-hidden w-full">
 
         {/* KPI row */}
         <div className="grid gap-5 md:grid-cols-3">

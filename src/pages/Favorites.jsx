@@ -39,7 +39,7 @@ export default function Favorites() {
   return (
     <>
       <Topbar title="Saved Meals" />
-      <div className="mx-auto max-w-7xl px-5 py-6 lg:px-8">
+      <div className="mx-auto max-w-7xl px-4 py-6 lg:px-8 overflow-x-hidden w-full">
         <div className="mb-6">
           <h2 className="font-display text-3xl font-extrabold text-ink lg:text-4xl">Your Favorites</h2>
           <p className="mt-1 text-slate-500">Meal plans you've saved for quick access later.</p>

@@ -1,10 +1,10 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { BarChart3, IdCard, Lock, Mail, Eye, EyeOff, UserPlus, LogIn, RefreshCw, Info, ShieldCheck } from "lucide-react";
-import { signIn, signUp, resetPasswordByRecoveryEmail, getSession, getRole, supabase } from "../lib/supabase.js";
+import { BarChart3, IdCard, Lock, Mail, Eye, EyeOff, UserPlus, LogIn, RefreshCw, ShieldCheck, KeyRound, ArrowLeft } from "lucide-react";
+import { signIn, signUp, resetPasswordByRecoveryEmail, verifyPasswordResetOtp, getSession, getRole, supabase } from "../lib/supabase.js";
 import { ID_EXAMPLES, formatIdInput } from "../lib/identity.js";
 
-const Field = ({ icon: Icon, type, placeholder, value, onChange, right, mono }) => (
+const Field = ({ icon: Icon, type, placeholder, value, onChange, right, mono, maxLength }) => (
   <div className="relative">
     <Icon className="pointer-events-none absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
     <input
@@ -15,6 +15,7 @@ const Field = ({ icon: Icon, type, placeholder, value, onChange, right, mono }) 
       onChange={(e) => onChange(e.target.value)}
       autoComplete="off"
       autoCapitalize="characters"
+      maxLength={maxLength}
     />
     {right}
   </div>
@@ -22,16 +23,19 @@ const Field = ({ icon: Icon, type, placeholder, value, onChange, right, mono }) 
 
 export default function Login() {
   const navigate = useNavigate();
-  const [tab, setTab]                 = useState("in");  // "in" | "up" | "verify" | "reset" | "newpw"
-  const [idNumber, setIdNumber]       = useState("");
-  const [name, setName]               = useState("");
-  const [bowenEmail, setBowenEmail]   = useState("");
-  const [resetEmail, setResetEmail]   = useState("");
-  const [pw, setPw]                   = useState("");
-  const [showPw, setShowPw]           = useState(false);
-  const [loading, setLoading]         = useState(false);
-  const [err, setErr]                 = useState("");
-  const [msg, setMsg]                 = useState("");
+  const [tab, setTab]               = useState("in");
+  const [idNumber, setIdNumber]     = useState("");
+  const [name, setName]             = useState("");
+  const [bowenEmail, setBowenEmail] = useState("");
+  const [resetEmail, setResetEmail] = useState("");
+  const [otpCode, setOtpCode]       = useState("");
+  const [pw, setPw]                 = useState("");
+  const [confirmPw, setConfirmPw]   = useState("");
+  const [showPw, setShowPw]         = useState(false);
+  const [showConfirmPw, setShowConfirmPw] = useState(false);
+  const [loading, setLoading]       = useState(false);
+  const [err, setErr]               = useState("");
+  const [msg, setMsg]               = useState("");
 
   useEffect(() => {
     getSession().then(async (s) => {
@@ -78,20 +82,48 @@ export default function Login() {
     setErr(""); setLoading(true);
     try {
       await resetPasswordByRecoveryEmail(resetEmail);
-      setMsg("If that email is verified on an account, a reset link has been sent.");
-      setTab("in");
+      setMsg("");
+      setOtpCode("");
+      setTab("otp");
     } catch (ex) {
       setErr(ex.message || "Could not send reset email.");
+    } finally { setLoading(false); }
+  }
+
+  async function handleVerifyOtp(e) {
+    e.preventDefault();
+    setErr(""); setLoading(true);
+    const clean = otpCode.replace(/\s/g, "");
+    if (clean.length !== 6 || !/^\d{6}$/.test(clean)) {
+      setErr("Please enter the 6-digit code from your email.");
+      setLoading(false);
+      return;
+    }
+    try {
+      await verifyPasswordResetOtp(resetEmail, clean);
+      setPw("");
+      setConfirmPw("");
+      setTab("newpw");
+    } catch (ex) {
+      setErr(ex.message || "Invalid or expired code. Please try again.");
     } finally { setLoading(false); }
   }
 
   async function handleUpdatePw(e) {
     e.preventDefault();
     setErr(""); setLoading(true);
+    if (pw.length < 6) {
+      setErr("Password must be at least 6 characters.");
+      setLoading(false); return;
+    }
+    if (pw !== confirmPw) {
+      setErr("Passwords do not match.");
+      setLoading(false); return;
+    }
     try {
       const { error } = await supabase.auth.updateUser({ password: pw });
       if (error) throw error;
-      setMsg("Password updated. Please sign in.");
+      setMsg("Password updated successfully. Please sign in with your new password.");
       setTab("in");
     } catch (ex) {
       setErr(ex.message || "Could not update password.");
@@ -104,6 +136,15 @@ export default function Login() {
       {showPw ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
     </button>
   );
+
+  const confirmEyeBtn = (
+    <button type="button" onClick={() => setShowConfirmPw((s) => !s)}
+      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-navy">
+      {showConfirmPw ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+    </button>
+  );
+
+  function backToSignIn() { setTab("in"); setErr(""); setMsg(""); setOtpCode(""); }
 
   return (
     <div className="bg-dotted relative flex min-h-screen items-center justify-center px-4 py-12">
@@ -199,7 +240,7 @@ export default function Login() {
             </form>
           )}
 
-          {/* VERIFY — shown right after sign-up */}
+          {/* VERIFY */}
           {tab === "verify" && (
             <div className="mt-6 space-y-5 text-center">
               <div className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-emerald-50">
@@ -219,38 +260,109 @@ export default function Login() {
             </div>
           )}
 
-          {/* FORGOT PASSWORD — needs the verified bowen.edu.ng email from sign-up */}
+          {/* STEP 1: FORGOT PASSWORD */}
           {tab === "reset" && (
             <form onSubmit={handleReset} className="mt-6 space-y-5">
-              <p className="text-sm text-slate-500">
-                Enter your verified Bowen email. We'll send a reset link there.
-              </p>
+              <div className="text-center">
+                <div className="mx-auto grid h-12 w-12 place-items-center rounded-2xl bg-navy/10">
+                  <Mail className="h-6 w-6 text-navy" />
+                </div>
+                <p className="mt-3 font-display text-lg font-bold text-ink">Reset your password</p>
+                <p className="mt-1 text-sm text-slate-500">
+                  Enter your Bowen email. We'll send a 6-digit verification code.
+                </p>
+              </div>
               <div>
                 <label className="text-sm font-semibold text-ink">Bowen University email</label>
                 <div className="mt-2"><Field icon={Mail} type="email" placeholder="yourname@bowen.edu.ng" value={resetEmail} onChange={setResetEmail} /></div>
               </div>
               <button type="submit" disabled={loading} className="btn-primary w-full py-3.5 disabled:opacity-60">
-                {loading ? <RefreshCw className="h-4 w-4 animate-spin" /> : "Send Reset Link"}
+                {loading ? <RefreshCw className="h-4 w-4 animate-spin" /> : "Send Verification Code"}
               </button>
-              <button type="button" onClick={() => { setTab("in"); setErr(""); setMsg(""); }}
-                className="w-full text-sm font-semibold text-slate-500 hover:text-navy">← Back to Sign In</button>
+              <button type="button" onClick={backToSignIn}
+                className="flex w-full items-center justify-center gap-1.5 text-sm font-semibold text-slate-500 hover:text-navy">
+                <ArrowLeft className="h-4 w-4" /> Back to Sign In
+              </button>
               <p className="text-center text-xs text-slate-400">
                 Lost access to your Bowen email too? Ask an administrator to reset your password.
               </p>
             </form>
           )}
 
-          {/* SET NEW PASSWORD — after clicking the email link */}
+          {/* STEP 2: ENTER OTP */}
+          {tab === "otp" && (
+            <form onSubmit={handleVerifyOtp} className="mt-6 space-y-5">
+              <div className="text-center">
+                <div className="mx-auto grid h-12 w-12 place-items-center rounded-2xl bg-gold/20">
+                  <KeyRound className="h-6 w-6 text-gold-dark" />
+                </div>
+                <p className="mt-3 font-display text-lg font-bold text-ink">Enter verification code</p>
+                <p className="mt-1 text-sm text-slate-500">
+                  We sent a 6-digit code to{" "}
+                  <span className="font-semibold text-ink break-all">{resetEmail}</span>.
+                  Enter it below to continue.
+                </p>
+              </div>
+              <div>
+                <label className="text-sm font-semibold text-ink">6-digit code</label>
+                <div className="mt-2">
+                  <Field
+                    icon={KeyRound}
+                    type="text"
+                    placeholder="123456"
+                    value={otpCode}
+                    onChange={(v) => setOtpCode(v.replace(/\D/g, "").slice(0, 6))}
+                    mono
+                    maxLength={6}
+                  />
+                </div>
+                <p className="mt-1.5 text-xs text-slate-400">Check your spam folder if you don't see it. The code expires in 1 hour.</p>
+              </div>
+              <button type="submit" disabled={loading || otpCode.length !== 6} className="btn-primary w-full py-3.5 disabled:opacity-60">
+                {loading ? <RefreshCw className="h-4 w-4 animate-spin" /> : "Verify Code"}
+              </button>
+              <div className="flex items-center justify-between text-sm">
+                <button type="button" onClick={backToSignIn}
+                  className="flex items-center gap-1.5 font-semibold text-slate-500 hover:text-navy">
+                  <ArrowLeft className="h-4 w-4" /> Back
+                </button>
+                <button type="button" onClick={() => { setTab("reset"); setErr(""); setOtpCode(""); }}
+                  className="font-semibold text-gold-dark hover:underline">
+                  Resend code
+                </button>
+              </div>
+            </form>
+          )}
+
+          {/* STEP 3: SET NEW PASSWORD */}
           {tab === "newpw" && (
             <form onSubmit={handleUpdatePw} className="mt-6 space-y-5">
-              <p className="text-sm text-slate-500">Choose a new password for your account.</p>
+              <div className="text-center">
+                <div className="mx-auto grid h-12 w-12 place-items-center rounded-2xl bg-emerald-50">
+                  <Lock className="h-6 w-6 text-emerald-600" />
+                </div>
+                <p className="mt-3 font-display text-lg font-bold text-ink">Set new password</p>
+                <p className="mt-1 text-sm text-slate-500">Choose a strong password for your account.</p>
+              </div>
               <div>
                 <label className="text-sm font-semibold text-ink">New password</label>
                 <div className="mt-2">
                   <Field icon={Lock} type={showPw ? "text" : "password"} placeholder="At least 6 characters" value={pw} onChange={setPw} right={eyeBtn} />
                 </div>
               </div>
-              <button type="submit" disabled={loading} className="btn-primary w-full py-3.5 disabled:opacity-60">
+              <div>
+                <label className="text-sm font-semibold text-ink">Confirm new password</label>
+                <div className="mt-2">
+                  <Field icon={Lock} type={showConfirmPw ? "text" : "password"} placeholder="Re-enter your password" value={confirmPw} onChange={setConfirmPw} right={confirmEyeBtn} />
+                </div>
+                {confirmPw && pw !== confirmPw && (
+                  <p className="mt-1.5 text-xs font-medium text-red-500">Passwords do not match</p>
+                )}
+                {confirmPw && pw === confirmPw && pw.length >= 6 && (
+                  <p className="mt-1.5 text-xs font-medium text-emerald-600">✓ Passwords match</p>
+                )}
+              </div>
+              <button type="submit" disabled={loading || pw.length < 6 || pw !== confirmPw} className="btn-primary w-full py-3.5 disabled:opacity-60">
                 {loading ? <RefreshCw className="h-4 w-4 animate-spin" /> : "Update Password"}
               </button>
             </form>
