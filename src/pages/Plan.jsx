@@ -1,15 +1,14 @@
 import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { CAFETERIAS, getCheapestMealCost, getMenuForCafeteria, MEAL_TYPES } from "../data/dataset.js";
-import { optimizeMeal } from "../lib/optimizer.js";
-import { Star, MapPin, TrendingDown, TrendingUp, Minus, ChevronRight, Sunrise, Sun, Moon, Utensils } from "lucide-react";
+import { CAFETERIAS, getCheapestMealCost, MEAL_TYPES } from "../data/dataset.js";
+import { Star, MapPin, TrendingDown, ChevronRight, Sunrise, Sun, Moon } from "lucide-react";
 import { useAuth } from "../lib/auth.jsx";
 
-const MEAL_ICONS  = { breakfast: Sunrise, lunch: Sun, dinner: Moon };
+const MEAL_ICONS = { breakfast: Sunrise, lunch: Sun, dinner: Moon };
 const MEAL_COLORS = {
-  breakfast: { active: "bg-amber-500 text-white",   border: "border-amber-300 dark:border-amber-700",   icon: "text-amber-500", light: "bg-amber-50 dark:bg-amber-950/30" },
+  breakfast: { active: "bg-amber-500 text-white",   border: "border-amber-300 dark:border-amber-700",   icon: "text-amber-500",   light: "bg-amber-50 dark:bg-amber-950/30"   },
   lunch:     { active: "bg-emerald-500 text-white",  border: "border-emerald-300 dark:border-emerald-700", icon: "text-emerald-500", light: "bg-emerald-50 dark:bg-emerald-950/30" },
-  dinner:    { active: "bg-indigo-500 text-white",   border: "border-indigo-300 dark:border-indigo-700",  icon: "text-indigo-500", light: "bg-indigo-50 dark:bg-indigo-950/30" },
+  dinner:    { active: "bg-indigo-500 text-white",   border: "border-indigo-300 dark:border-indigo-700",  icon: "text-indigo-500",  light: "bg-indigo-50 dark:bg-indigo-950/30"  },
 };
 const APPETITE_OPTS = ["Light", "Normal", "Large"];
 
@@ -24,56 +23,46 @@ function getActiveMealByTime() {
 function StarRating({ rating }) {
   return (
     <div className="flex items-center gap-0.5">
-      {[1,2,3,4,5].map(s => (
-        <Star key={s} className={`h-3 w-3 ${s <= Math.round(rating) ? "fill-gold text-gold" : "text-slate-300 dark:text-slate-600"}`} />
+      {[1, 2, 3, 4, 5].map(s => (
+        <Star
+          key={s}
+          className={`h-3 w-3 ${s <= Math.round(rating) ? "fill-gold text-gold" : "text-slate-300 dark:text-slate-600"}`}
+        />
       ))}
       <span className="ml-1 text-xs font-semibold text-slate-500 dark:text-slate-400">{rating.toFixed(1)}</span>
     </div>
   );
 }
 
-function isAtLeastMinimumBudget(value) {
-  const digits = (value || "").replace(/^0+/, "");
-  if (!digits) return false;
-  if (digits.length !== 3) return digits.length > 3;
-  return digits >= "400";
-}
-
-function getSuggestions(budgetText, appetite) {
-  if (!isAtLeastMinimumBudget(budgetText)) return { cheapest: [], topRated: [] };
-  const scored = CAFETERIAS.map(cafe => {
-    const menu = getMenuForCafeteria(cafe.id);
-    const result = optimizeMeal({ menu, budget: budgetText, appetite, crave: new Set(), avoid: new Set() });
-    if (!result?.feasible) return null;
-    return { cafe, cost: result.totalCost, savings: budgetText - result.totalCost };
-  }).filter(Boolean);
-  if (!scored.length) return { cheapest: [], topRated: [] };
-  return {
-    cheapest: [...scored].sort((a, b) => a.cost - b.cost).slice(0, 3),
-    topRated: [...scored].sort((a, b) => b.cafe.rating - a.cafe.rating).slice(0, 3),
-  };
-}
-
 export default function Plan() {
-  const navigate = useNavigate();
+  const navigate  = useNavigate();
   const { session } = useAuth();
+
   const [activeMeal, setActiveMeal] = useState(getActiveMealByTime());
-  const [budgets, setBudgets]       = useState({ breakfast: "", lunch: "", dinner: "" });
+  const [budget, setBudget]         = useState("");
   const [appetite, setAppetite]     = useState("Normal");
 
-  const budgetText = budgets[activeMeal] ?? "";
-  const hasBudget = budgetText !== "";
-  const canSuggest = isAtLeastMinimumBudget(budgetText);
-  const { cheapest, topRated } = useMemo(() => getSuggestions(budgetText, appetite), [budgetText, appetite]);
+  const budgetNum = Number(budget) || 0;
+  const perMeal   = budgetNum > 0 ? Math.floor(budgetNum / 3) : 0;
+  const hasBudget = budget !== "";
+  const canSuggest = perMeal >= 400;
+
+  const feasible = useMemo(() => {
+    if (perMeal < 400) return [];
+    return CAFETERIAS
+      .filter(c => getCheapestMealCost(c.id) <= perMeal)
+      .sort((a, b) => b.rating - a.rating);
+  }, [perMeal]);
 
   const userName = session?.user?.user_metadata?.full_name?.split(" ")[0] || "there";
 
   function goToOptimizer(cafe) {
-    const budget = budgets[activeMeal] ?? "";
-    navigate(`/app/optimizer?budget=${budget}&cafe=${cafe.id}&meal=${activeMeal}&appetite=${appetite}&crave=&avoid=`);
+    navigate(
+      `/app/optimizer?budget=${perMeal}&cafe=${cafe.id}&meal=${activeMeal}&appetite=${appetite}&crave=&avoid=`
+    );
   }
 
-  const mc = MEAL_COLORS[activeMeal];
+  const mc       = MEAL_COLORS[activeMeal];
   const MealIcon = MEAL_ICONS[activeMeal];
 
   return (
@@ -88,25 +77,24 @@ export default function Plan() {
         </p>
       </div>
 
-      {/* Meal type tabs */}
-      <div className="flex gap-2 mb-5 overflow-x-auto pb-1 scrollbar-none">
+      {/* Meal type tabs — icon + label only, no time text */}
+      <div className="flex gap-2 mb-5">
         {Object.values(MEAL_TYPES).map(mt => {
-          const Icon = MEAL_ICONS[mt.key];
-          const col  = MEAL_COLORS[mt.key];
+          const Icon    = MEAL_ICONS[mt.key];
+          const col     = MEAL_COLORS[mt.key];
           const isActive = activeMeal === mt.key;
           return (
             <button
               key={mt.key}
               onClick={() => setActiveMeal(mt.key)}
-              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold whitespace-nowrap transition border ${
+              className={`flex flex-1 items-center justify-center gap-2 px-3 py-2.5 rounded-xl text-sm font-semibold transition border ${
                 isActive
                   ? `${col.active} border-transparent shadow-sm`
                   : "bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700"
               }`}
             >
-              <Icon className="h-4 w-4" />
-              {mt.label}
-              <span className={`text-xs ${isActive ? "opacity-70" : "text-slate-400"}`}>{mt.hours}</span>
+              <Icon className="h-4 w-4 shrink-0" />
+              <span>{mt.label}</span>
             </button>
           );
         })}
@@ -123,10 +111,10 @@ export default function Plan() {
           </p>
         </div>
 
-        {/* Budget input — text type to prevent spin button navigation */}
+        {/* Budget input */}
         <div className="mb-4">
           <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-2 block">
-            How much can you spend?
+            How much can you spend today?
           </label>
           <div className="flex items-center rounded-xl border-2 border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-800 px-4 py-3 focus-within:border-navy dark:focus-within:border-blue-400 transition">
             <span className="mr-2 font-display text-2xl font-bold text-slate-400">₦</span>
@@ -134,20 +122,21 @@ export default function Plan() {
               type="text"
               inputMode="numeric"
               pattern="[0-9]*"
-              value={budgets[activeMeal] ?? ""}
-              onChange={e => {
-                const val = e.target.value.replace(/[^0-9]/g, "");
-                setBudgets(b => ({ ...b, [activeMeal]: val }));
-              }}
+              value={budget}
+              onChange={e => setBudget(e.target.value.replace(/[^0-9]/g, ""))}
               placeholder="0"
               className="w-full bg-transparent font-display text-2xl font-bold text-ink dark:text-slate-100 outline-none placeholder:text-slate-300 dark:placeholder:text-slate-600"
             />
           </div>
-          {hasBudget && !canSuggest && (
-            <p className="mt-2 text-xs text-amber-600 font-medium">⚠️ Minimum for a meal is ₦400</p>
+          {hasBudget && !canSuggest && budgetNum > 0 && (
+            <p className="mt-2 text-xs text-amber-600 font-medium">
+              ⚠️ Per-meal budget of ₦{perMeal.toLocaleString()} is too low — minimum ₦400/meal (₦1,200/day)
+            </p>
           )}
           {canSuggest && (
-            <p className="mt-2 text-xs text-emerald-600 font-medium">✓ Budget of ₦{budgetText} — showing cafeteria suggestions below</p>
+            <p className="mt-2 text-xs text-emerald-600 font-medium">
+              ✓ ₦{perMeal.toLocaleString()} per meal — showing cafeteria options below
+            </p>
           )}
         </div>
 
@@ -174,103 +163,91 @@ export default function Plan() {
         </div>
       </div>
 
-      {/* Suggestions */}
-      {canSuggest && (
-        <div className="space-y-5">
-          {cheapest.length > 0 && (
+      {/* Per-meal breakdown + cafeteria list */}
+      {hasBudget && budgetNum > 0 && (
+        <>
+          {/* Per Meal calculation */}
+          <div className="grid grid-cols-2 gap-3 mb-5">
+            <div className="card p-3 text-center">
+              <p className="font-display text-lg font-bold text-ink dark:text-slate-100">
+                ₦{budgetNum.toLocaleString()}
+              </p>
+              <p className="text-xs text-slate-400 mt-0.5">Daily Budget</p>
+            </div>
+            <div className="card p-3 text-center">
+              <p className="font-display text-lg font-bold text-ink dark:text-slate-100">
+                ₦{perMeal.toLocaleString()}
+              </p>
+              <p className="text-xs text-slate-400 mt-0.5">Per Meal (÷3)</p>
+            </div>
+          </div>
+
+          {canSuggest ? (
             <div>
               <p className="text-[11px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500 mb-3">
-                💰 Best Value Cafeterias
+                Recommended Cafeterias (₦{perMeal.toLocaleString()}/meal)
               </p>
-              <div className="space-y-2">
-                {cheapest.map((item, i) => (
-                  <CafeCard key={item.cafe.id} item={item} rank={i+1} badge="value" onSelect={goToOptimizer} />
-                ))}
-              </div>
+              {feasible.length > 0 ? (
+                <div className="space-y-2">
+                  {feasible.map(cafe => (
+                    <button
+                      key={cafe.id}
+                      onClick={() => goToOptimizer(cafe)}
+                      className="w-full text-left card p-4 hover:border-navy dark:hover:border-blue-500 transition-all group flex items-center gap-4"
+                    >
+                      <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-navy text-white font-bold text-sm">
+                        {cafe.name.slice(0, 2).toUpperCase()}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-bold text-ink dark:text-slate-100 text-sm">{cafe.name}</p>
+                        <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                          <span className="flex items-center gap-1 text-xs text-slate-400">
+                            <MapPin className="h-3 w-3" />{cafe.side}
+                          </span>
+                          <StarRating rating={cafe.rating} />
+                        </div>
+                      </div>
+                      <div className="text-right shrink-0">
+                        <p className="text-xs text-emerald-600 font-semibold flex items-center justify-end gap-1">
+                          <TrendingDown className="h-3 w-3" /> Fits budget
+                        </p>
+                        <ChevronRight className="h-4 w-4 text-slate-300 group-hover:text-navy dark:group-hover:text-blue-400 ml-auto mt-1 transition" />
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <div className="card p-5 text-center">
+                  <p className="text-sm text-slate-500 dark:text-slate-400">
+                    No cafeterias fit this budget. Try increasing your amount.
+                  </p>
+                </div>
+              )}
             </div>
-          )}
-          {topRated.length > 0 && (
-            <div>
-              <p className="text-[11px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500 mb-3">
-                ⭐ Top Rated Cafeterias
-              </p>
-              <div className="space-y-2">
-                {topRated.map((item, i) => (
-                  <CafeCard key={item.cafe.id} item={item} rank={i+1} badge="rated" onSelect={goToOptimizer} />
-                ))}
-              </div>
-            </div>
-          )}
-          {cheapest.length === 0 && (
+          ) : (
             <div className="card p-5 text-center">
-              <Utensils className="h-8 w-8 text-slate-300 mx-auto mb-2" />
-              <p className="text-sm text-slate-500 dark:text-slate-400">Budget too low for any cafeteria. Try ₦500 or more.</p>
+              <p className="text-sm text-amber-600 font-medium">
+                ⚠️ Budget too low. Try at least ₦1,200/day (₦400/meal).
+              </p>
             </div>
           )}
-        </div>
+        </>
       )}
 
-      {!hasBudget && (
+      {/* Empty state */}
+      {(!hasBudget || budgetNum === 0) && (
         <div className="card p-8 text-center">
           <div className="mx-auto mb-3 grid h-14 w-14 place-items-center rounded-2xl bg-slate-100 dark:bg-slate-800">
             <MealIcon className="h-7 w-7 text-slate-400" />
           </div>
           <p className="font-semibold text-ink dark:text-slate-100">Enter your budget above</p>
-          <p className="mt-1 text-sm text-slate-400">We'll show you the best cafeterias for your budget</p>
+          <p className="mt-1 text-sm text-slate-400">
+            We'll show you the best cafeterias for your budget
+          </p>
         </div>
       )}
 
       <div className="h-8" />
     </div>
-  );
-}
-
-function CafeCard({ item, rank, badge, onSelect }) {
-  const { cafe, cost, savings } = item;
-  return (
-    <button
-      onClick={() => onSelect(cafe)}
-      className="w-full text-left card p-4 hover:border-navy dark:hover:border-blue-400 hover:shadow-md transition-all group"
-    >
-      <div className="flex items-center gap-3">
-        <div className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-navy text-white font-bold text-sm">
-          {rank}
-        </div>
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 flex-wrap">
-            <p className="font-bold text-ink dark:text-slate-100 text-sm">{cafe.name}</p>
-            {badge === "value" && (
-              <span className="rounded-full bg-emerald-100 dark:bg-emerald-900/40 px-2 py-0.5 text-[10px] font-bold text-emerald-700 dark:text-emerald-400">Best Value</span>
-            )}
-            {badge === "rated" && (
-              <span className="rounded-full bg-gold/20 px-2 py-0.5 text-[10px] font-bold text-gold-dark">Top Rated</span>
-            )}
-          </div>
-          <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-            <span className="flex items-center gap-1 text-xs text-slate-400">
-              <MapPin className="h-3 w-3" />{cafe.side}
-            </span>
-            <StarRating rating={cafe.rating} />
-          </div>
-        </div>
-        <div className="text-right shrink-0">
-          <p className="font-display text-lg font-bold text-ink dark:text-slate-100">₦{cost.toLocaleString()}</p>
-          {savings > 0 ? (
-            <p className="flex items-center justify-end gap-0.5 text-xs font-semibold text-emerald-600">
-              <TrendingDown className="h-3 w-3" /> Save ₦{savings.toLocaleString()}
-            </p>
-          ) : savings === 0 ? (
-            <p className="flex items-center justify-end gap-0.5 text-xs text-slate-400">
-              <Minus className="h-3 w-3" /> Exact
-            </p>
-          ) : (
-            <p className="flex items-center justify-end gap-0.5 text-xs font-semibold text-amber-600">
-              <TrendingUp className="h-3 w-3" /> Tight
-            </p>
-          )}
-          <ChevronRight className="h-4 w-4 text-slate-300 group-hover:text-navy dark:group-hover:text-blue-400 ml-auto mt-0.5 transition" />
-        </div>
-      </div>
-    </button>
   );
 }
