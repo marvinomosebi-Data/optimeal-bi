@@ -10,7 +10,7 @@ import {
 import { CATEGORIES } from "../data/dataset.js";
 import {
   Sparkles, Zap, CheckCircle2, Star, BrainCircuit, RefreshCw, TrendingUp,
-  Plus, Minus, RotateCcw, Repeat, Heart,
+  Plus, Minus, RotateCcw, Repeat, Heart, X,
 } from "lucide-react";
 
 const CATEGORY_LABEL = {
@@ -41,17 +41,25 @@ export default function Result() {
   useEffect(() => { fetchMenu(cafeId).then(setMenu); }, [cafeId]);
   useEffect(() => { fetchCafeterias().then((cs) => setCafe(cs.find((c) => c.id === cafeId))); }, [cafeId]);
 
-  // Manual override for the base (Swallow / Rice & Grains) item's portion count.
-  // null = let the optimizer choose automatically.
+  // Optimizer-linked overrides (fed back into optimizeMeal)
   const [baseOverride, setBaseOverride] = useState(null);
-  // Manual override for protein selection: [{ id, portions }, ...] or null.
-  // In manual mode, protein is FREE of the base<=protein ratio — either side
-  // can be larger. Only budget and protein/base compatibility still apply.
   const [proteinOverride, setProteinOverride] = useState(null);
 
-  // Any override can become invalid if the underlying constraints change
-  // (budget, appetite, cafeteria, cravings/avoids) — reset both when they do.
-  useEffect(() => { setBaseOverride(null); setProteinOverride(null); }, [menu, budget, appetite, cafeId, crave, avoid]);
+  // Display-level overrides (applied post-optimizer, never re-fed into engine)
+  const [baseRemoved, setBaseRemoved] = useState(false);
+  const [soupOverride, setSoupOverride] = useState(null); // null | "none" | soupId
+  const [sidePortions, setSidePortions] = useState(null); // null | number (0 = removed)
+
+  // Picker open states
+  const [showSwallowPicker, setShowSwallowPicker] = useState(false);
+  const [showSoupPicker, setShowSoupPicker] = useState(false);
+  const [showSidePicker, setShowSidePicker] = useState(false);
+
+  useEffect(() => {
+    setBaseOverride(null); setProteinOverride(null);
+    setBaseRemoved(false); setSoupOverride(null); setSidePortions(null);
+    setShowSwallowPicker(false); setShowSoupPicker(false); setShowSidePicker(false);
+  }, [menu, budget, appetite, cafeId, crave, avoid]);
 
   const autoResult = useMemo(() => {
     if (!menu.length) return null;
@@ -68,39 +76,102 @@ export default function Result() {
     });
   }, [menu, budget, appetite, crave, avoid, baseOverride, proteinOverride, autoResult]);
 
+  // Post-optimizer display items: apply soup/side/base-removal overrides on top of engine output
+  const displayItems = useMemo(() => {
+    if (!result?.items) return [];
+    let items = [...result.items];
+
+    // Remove base + its auto-soup when user explicitly removed the base
+    if (baseRemoved) {
+      items = items.filter(
+        (i) => i.category !== CATEGORIES.SWALLOW &&
+               i.category !== CATEGORIES.GRAINS &&
+               i.category !== CATEGORIES.SOUP,
+      );
+    }
+
+    // Soup override (only meaningful when base is present)
+    if (!baseRemoved) {
+      if (soupOverride === "none") {
+        items = items.filter((i) => i.category !== CATEGORIES.SOUP);
+      } else if (soupOverride) {
+        const m = menu.find((x) => x.id === soupOverride);
+        if (m) {
+          const entry = { ...m, portions: 1, lineCost: 0, lineSatiety: m.satiety };
+          items = items.map((i) => i.category === CATEGORIES.SOUP ? entry : i);
+        }
+      }
+    }
+
+    // Side override
+    if (sidePortions !== null) {
+      if (sidePortions === 0) {
+        items = items.filter((i) => i.category !== CATEGORIES.SIDE);
+      } else {
+        const hasSideInResult = items.some((i) => i.category === CATEGORIES.SIDE);
+        if (hasSideInResult) {
+          items = items.map((i) => {
+            if (i.category !== CATEGORIES.SIDE) return i;
+            return { ...i, portions: sidePortions, lineCost: i.price * sidePortions, lineSatiety: i.satiety * sidePortions };
+          });
+        } else {
+          // Side wasn't in optimizer's result — add it from menu
+          const sm = menu.find((x) => x.category === CATEGORIES.SIDE);
+          if (sm) {
+            items = [
+              ...items,
+              { ...sm, portions: sidePortions, lineCost: sm.price * sidePortions, lineSatiety: sm.satiety * sidePortions },
+            ];
+          }
+        }
+      }
+    }
+
+    return items;
+  }, [result, baseRemoved, soupOverride, sidePortions, menu]);
+
+  // Derived display totals
+  const displayCost = useMemo(() => displayItems.reduce((s, i) => s + i.lineCost, 0), [displayItems]);
+  const displayRawSatiety = useMemo(() => displayItems.reduce((s, i) => s + i.lineSatiety, 0), [displayItems]);
+  const displaySatietyScore = Math.min(100, Math.round((displayRawSatiety / 44) * 100));
+  const displaySlack = budget - displayCost;
+  const displayEfficiency = Math.round((displayCost / budget) * 100);
+
   if (!result) return <div className="p-10 text-slate-500">Calculating…</div>;
 
-  const isManuallyAdjusted = Boolean(baseOverride || proteinOverride);
+  // Item groups derived from displayItems
+  const displayBase    = displayItems.find((i) => i.category === CATEGORIES.SWALLOW || i.category === CATEGORIES.GRAINS);
+  const displaySoup    = displayItems.find((i) => i.category === CATEGORIES.SOUP);
+  const displayProteins = displayItems.filter((i) => i.category === CATEGORIES.PROTEIN);
+  const displaySide    = displayItems.find((i) => i.category === CATEGORIES.SIDE);
 
-  // ---------- Base portion controls ----------
-  const baseItem = result.items[0]; // engine always places the base first
+  const isManuallyAdjusted = Boolean(
+    baseOverride || proteinOverride || baseRemoved ||
+    soupOverride || sidePortions !== null,
+  );
+
+  // ---------- Base / swallow controls ----------
+  const baseItem = result.items[0]; // optimizer always places base first
   const baseMenuItem = menu.find((m) => m.id === baseItem?.id);
-  const isAdjustableBase = baseMenuItem && (baseMenuItem.category === CATEGORIES.SWALLOW || baseMenuItem.category === CATEGORIES.GRAINS);
+  const isAdjustableBase = baseMenuItem &&
+    (baseMenuItem.category === CATEGORIES.SWALLOW || baseMenuItem.category === CATEGORIES.GRAINS);
 
-  // Budget left over for the base if we stripped it out and could re-spend
-  // freely on more of it. Manual mode is governed by budget only.
   const budgetForBase = budget - (result.cost - (baseItem?.lineCost || 0));
   const maxBasePortions = isAdjustableBase ? manualMaxPortions(baseMenuItem, budgetForBase) : 1;
-  const minBasePortions = 1;
 
   function adjustBasePortions(delta) {
     if (!isAdjustableBase) return;
     const current = baseItem.portions;
-    const next = Math.max(minBasePortions, Math.min(maxBasePortions, current + delta));
+    const next = Math.max(1, Math.min(maxBasePortions, current + delta));
     if (next === current) return;
     setBaseOverride({ id: baseMenuItem.id, portions: next });
-    // Existing protein selection still re-validates against the new base via
-    // compatibility + budget only — no ratio to break — so we keep it as-is
-    // unless the engine reports infeasible (handled by the warning banner).
   }
 
   function resetBase() { setBaseOverride(null); }
 
-  // ---------- Protein controls (manual mode: budget + compatibility only) ----------
+  // ---------- Protein controls ----------
   const proteinItems = result.items.filter((i) => i.category === CATEGORIES.PROTEIN);
   const allowedProteins = allowedProteinsFor(baseMenuItem, menu);
-  // Budget remaining if we stripped ALL current protein out — what's available
-  // to freely add more of any protein, independent of the base's portion count.
   const proteinTotalCost = proteinItems.reduce((s, i) => s + i.lineCost, 0);
   const budgetForProteins = budget - (result.cost - proteinTotalCost);
 
@@ -115,22 +186,19 @@ export default function Result() {
   function adjustProteinQty(proteinId, delta) {
     const sel = currentProteinSelections();
     const idx = sel.findIndex((p) => p.id === proteinId);
-    const proteinMenuItem = menu.find((m) => m.id === proteinId);
+    const pm = menu.find((m) => m.id === proteinId);
     if (idx === -1 && delta <= 0) return;
 
     if (idx === -1) {
-      // Adding a brand-new protein type — manual mode has no type-count
-      // ceiling; the only guard is whether at least 1 portion is affordable.
-      if (!proteinMenuItem || proteinMenuItem.price > budgetForProteins) return;
+      if (!pm || pm.price > budgetForProteins) return;
       sel.push({ id: proteinId, portions: 1 });
     } else {
-      const current = sel[idx].portions;
       const spentOnOthers = proteinItems
         .filter((i) => i.id !== proteinId)
         .reduce((s, i) => s + i.lineCost, 0);
       const roomForThis = budget - (result.cost - proteinTotalCost) - spentOnOthers;
-      const maxForThis = manualMaxPortions(proteinMenuItem, roomForThis);
-      const next = Math.max(0, Math.min(maxForThis, current + delta));
+      const maxForThis = manualMaxPortions(pm, roomForThis);
+      const next = Math.max(0, Math.min(maxForThis, sel[idx].portions + delta));
       sel[idx].portions = next;
     }
     commitProteins(sel);
@@ -147,15 +215,33 @@ export default function Result() {
 
   function resetProteins() { setProteinOverride(null); }
 
+  // ---------- Side controls ----------
+  const sideMenuItem = menu.find((m) => m.category === CATEGORIES.SIDE);
+
+  function adjustSide(delta) {
+    if (!sideMenuItem) return;
+    const current = displaySide?.portions ?? 0;
+    const costWithoutSide = displayCost - (displaySide?.lineCost ?? 0);
+    const roomForSide = budget - costWithoutSide;
+    const maxSide = manualMaxPortions(sideMenuItem, roomForSide);
+    const next = Math.max(0, Math.min(maxSide, current + delta));
+    setSidePortions(next);
+  }
+
+  // ---------- Available items for pickers ----------
+  const availableSwallows = menu.filter((m) => m.category === CATEGORIES.SWALLOW);
+  const availableSoups    = menu.filter((m) => m.category === CATEGORIES.SOUP);
+  const availableSides    = menu.filter((m) => m.category === CATEGORIES.SIDE);
+
   // ---------- Satiety score & stars ----------
-  const stars = Math.round((result.satietyScore / 100) * 5);
+  const stars = Math.round((displaySatietyScore / 100) * 5);
   const satisfactionTier = (() => {
-    const s = result.satietyScore;
-    if (s >= 80) return { label: "High Satisfaction",     cls: "text-emerald-600" };
-    if (s >= 60) return { label: "Good Satisfaction",      cls: "text-emerald-600" };
-    if (s >= 40) return { label: "Moderate Satisfaction",  cls: "text-amber-600"   };
-    if (s >= 20) return { label: "Light Satisfaction",     cls: "text-amber-600"   };
-    return            { label: "Minimal Satisfaction",   cls: "text-red-500"     };
+    const s = displaySatietyScore;
+    if (s >= 80) return { label: "High Satisfaction",    cls: "text-emerald-600" };
+    if (s >= 60) return { label: "Good Satisfaction",     cls: "text-emerald-600" };
+    if (s >= 40) return { label: "Moderate Satisfaction", cls: "text-amber-600"   };
+    if (s >= 20) return { label: "Light Satisfaction",    cls: "text-amber-600"   };
+    return           { label: "Minimal Satisfaction",   cls: "text-red-500"     };
   })();
 
   // ---------- Save to Favorites ----------
@@ -167,9 +253,9 @@ export default function Result() {
         planName: planName.trim() || `${cafe?.name || "Meal"} · ₦${budget.toLocaleString()}`,
         cafeId, cafeName: cafe?.name || "",
         budget, appetite,
-        items: result.items,
-        totalCost: result.cost,
-        satietyScore: result.satietyScore,
+        items: displayItems,
+        totalCost: displayCost,
+        satietyScore: displaySatietyScore,
       });
       setSaveMsg("Saved to your favorites!");
       setTimeout(() => { setSaveOpen(false); setSaveMsg(""); setPlanName(""); }, 1400);
@@ -177,6 +263,8 @@ export default function Result() {
       setSaveMsg(ex.message || "Could not save. Try again.");
     } finally { setSaving(false); }
   }
+
+  const rowCls = "flex flex-wrap items-center gap-4 rounded-xl border border-slate-200 p-4";
 
   return (
     <>
@@ -221,21 +309,161 @@ export default function Result() {
                   </div>
                 )}
 
-                {result.items.map((item, idx) => {
-                  const isBaseRow = idx === 0 && isAdjustableBase;
-                  const isProteinRow = item.category === CATEGORIES.PROTEIN;
-                  const swapOptions = isProteinRow
-                    ? allowedProteins.filter((p) => p.id === item.id || !proteinItems.some((pi) => pi.id === p.id))
-                    : [];
+                {/* ── Base (Swallow / Grains) ── */}
+                {displayBase && (
+                  <div className={rowCls}>
+                    <div className="grid h-14 w-14 shrink-0 place-items-center rounded-lg bg-gradient-to-br from-navy to-navy-800 text-gold">
+                      <Zap className="h-6 w-6" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="font-display text-lg font-bold text-ink">{displayBase.name}</p>
+                      <p className="mt-2 text-sm text-slate-500">
+                        {CATEGORY_LABEL[displayBase.category] || displayBase.category}
+                        {" · "}
+                        {displayBase.portions} {displayBase.portions > 1 ? "portions" : "portion"}
+                        {displayBase.note && !displayBase.note.toLowerCase().includes("auto") ? ` · ${displayBase.note}` : ""}
+                      </p>
+                    </div>
+                    {isAdjustableBase && (
+                      <div className="flex shrink-0 items-center gap-1.5">
+                        {baseOverride && (
+                          <button onClick={resetBase} title="Reset to optimized portion"
+                            className="mr-1 grid h-7 w-7 place-items-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-navy">
+                            <RotateCcw className="h-3.5 w-3.5" />
+                          </button>
+                        )}
+                        <button
+                          onClick={() => {
+                            if (displayBase.portions <= 1 && displayBase.category === CATEGORIES.SWALLOW) {
+                              setBaseRemoved(true);
+                              setBaseOverride(null);
+                              setSoupOverride(null);
+                              setShowSoupPicker(false);
+                            } else {
+                              adjustBasePortions(-1);
+                            }
+                          }}
+                          disabled={displayBase.portions <= 1 && displayBase.category !== CATEGORIES.SWALLOW}
+                          className="grid h-8 w-8 place-items-center rounded-lg border border-slate-200 text-ink hover:bg-slate-50 disabled:opacity-30 disabled:hover:bg-transparent"
+                        >
+                          <Minus className="h-3.5 w-3.5" />
+                        </button>
+                        <span className="w-6 text-center font-display text-sm font-bold text-ink">{displayBase.portions}</span>
+                        <button
+                          onClick={() => adjustBasePortions(1)}
+                          disabled={displayBase.portions >= maxBasePortions}
+                          className="grid h-8 w-8 place-items-center rounded-lg border border-slate-200 text-ink hover:bg-slate-50 disabled:opacity-30 disabled:hover:bg-transparent"
+                        >
+                          <Plus className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    )}
+                    <div className="text-right">
+                      <p className="font-display text-lg font-bold text-ink">
+                        ₦{displayBase.lineCost.toLocaleString()}
+                      </p>
+                      <p className="flex items-center justify-end gap-1 text-sm font-semibold text-emerald-600">
+                        <Zap className="h-3.5 w-3.5" /> Satiety: {displayBase.satiety}
+                      </p>
+                    </div>
+                  </div>
+                )}
 
+                {/* Add a swallow — shown when swallow was removed */}
+                {baseRemoved && (
+                  <div className="space-y-2">
+                    {showSwallowPicker && availableSwallows.length > 0 && (
+                      <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+                        {availableSwallows.map((sw) => (
+                          <button
+                            key={sw.id}
+                            onClick={() => {
+                              setBaseRemoved(false);
+                              setBaseOverride({ id: sw.id, portions: 1 });
+                              setSoupOverride(null);
+                              setShowSwallowPicker(false);
+                            }}
+                            className="flex w-full items-center justify-between border-b border-slate-100 px-4 py-2.5 text-sm text-ink hover:bg-slate-50 last:border-0"
+                          >
+                            <span className="font-medium">{sw.name}</span>
+                            <span className="text-slate-500">₦{sw.price.toLocaleString()}</span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                    <button
+                      onClick={() => setShowSwallowPicker((v) => !v)}
+                      className="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-slate-300 py-3 text-sm font-semibold text-slate-500 hover:border-navy hover:text-navy"
+                    >
+                      <Plus className="h-4 w-4" /> Add a swallow
+                    </button>
+                  </div>
+                )}
+
+                {/* ── Free Soup (swallow meals only) ── */}
+                {displayBase?.category === CATEGORIES.SWALLOW && displaySoup && (
+                  <div className={rowCls}>
+                    <div className="grid h-14 w-14 shrink-0 place-items-center rounded-lg bg-gradient-to-br from-navy to-navy-800 text-gold">
+                      <Zap className="h-6 w-6" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="font-display text-lg font-bold text-ink">{displaySoup.name}</p>
+                      <p className="mt-2 text-sm text-slate-500">Free Soup · 1 portion</p>
+                    </div>
+                    <button
+                      onClick={() => { setSoupOverride("none"); setShowSoupPicker(false); }}
+                      title="Remove soup"
+                      className="grid h-8 w-8 shrink-0 place-items-center rounded-lg border border-slate-200 text-slate-400 hover:border-red-200 hover:bg-red-50 hover:text-red-500"
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                    <div className="text-right">
+                      <p className="font-display text-lg font-bold text-ink">Free</p>
+                      <p className="flex items-center justify-end gap-1 text-sm font-semibold text-emerald-600">
+                        <Zap className="h-3.5 w-3.5" /> Satiety: {displaySoup.satiety}
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Add a soup — shown when swallow base has no soup */}
+                {displayBase?.category === CATEGORIES.SWALLOW && !displaySoup && availableSoups.length > 0 && (
+                  <div className="space-y-2">
+                    {showSoupPicker && (
+                      <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+                        {availableSoups.map((s) => (
+                          <button
+                            key={s.id}
+                            onClick={() => { setSoupOverride(s.id); setShowSoupPicker(false); }}
+                            className="flex w-full items-center justify-between border-b border-slate-100 px-4 py-2.5 text-sm text-ink hover:bg-slate-50 last:border-0"
+                          >
+                            <span className="font-medium">{s.name}</span>
+                            <span className="text-slate-500">Free</span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                    <button
+                      onClick={() => setShowSoupPicker((v) => !v)}
+                      className="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-slate-300 py-3 text-sm font-semibold text-slate-500 hover:border-navy hover:text-navy"
+                    >
+                      <Plus className="h-4 w-4" /> Add a soup
+                    </button>
+                  </div>
+                )}
+
+                {/* ── Proteins ── */}
+                {displayProteins.map((item) => {
+                  const swapOptions = allowedProteins.filter(
+                    (p) => p.id === item.id || !displayProteins.some((pi) => pi.id === p.id),
+                  );
                   return (
-                    <div key={idx} className="flex flex-wrap items-center gap-4 rounded-xl border border-slate-200 p-4">
+                    <div key={item.id} className={rowCls}>
                       <div className="grid h-14 w-14 shrink-0 place-items-center rounded-lg bg-gradient-to-br from-navy to-navy-800 text-gold">
                         <Zap className="h-6 w-6" />
                       </div>
-
                       <div className="min-w-0 flex-1">
-                        {isProteinRow && swapOptions.length > 1 ? (
+                        {swapOptions.length > 1 ? (
                           <div className="flex items-center gap-1.5">
                             <select
                               value={item.id}
@@ -258,45 +486,23 @@ export default function Result() {
                           {item.note && !item.note.toLowerCase().includes("auto") ? ` · ${item.note}` : ""}
                         </p>
                       </div>
-
-                      {isBaseRow && (
-                        <div className="flex shrink-0 items-center gap-1.5">
-                          {baseOverride && (
-                            <button onClick={resetBase} title="Reset to optimized portion"
-                              className="mr-1 grid h-7 w-7 place-items-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-navy">
-                              <RotateCcw className="h-3.5 w-3.5" />
-                            </button>
-                          )}
-                          <button onClick={() => adjustBasePortions(-1)} disabled={baseItem.portions <= minBasePortions}
-                            className="grid h-8 w-8 place-items-center rounded-lg border border-slate-200 text-ink hover:bg-slate-50 disabled:opacity-30 disabled:hover:bg-transparent">
-                            <Minus className="h-3.5 w-3.5" />
-                          </button>
-                          <span className="w-6 text-center font-display text-sm font-bold text-ink">{baseItem.portions}</span>
-                          <button onClick={() => adjustBasePortions(1)} disabled={baseItem.portions >= maxBasePortions}
-                            className="grid h-8 w-8 place-items-center rounded-lg border border-slate-200 text-ink hover:bg-slate-50 disabled:opacity-30 disabled:hover:bg-transparent">
-                            <Plus className="h-3.5 w-3.5" />
-                          </button>
-                        </div>
-                      )}
-
-                      {isProteinRow && (
-                        <div className="flex shrink-0 items-center gap-1.5">
-                          <button onClick={() => adjustProteinQty(item.id, -1)}
-                            className="grid h-8 w-8 place-items-center rounded-lg border border-slate-200 text-ink hover:bg-slate-50">
-                            <Minus className="h-3.5 w-3.5" />
-                          </button>
-                          <span className="w-6 text-center font-display text-sm font-bold text-ink">{item.portions}</span>
-                          <button onClick={() => adjustProteinQty(item.id, 1)}
-                            className="grid h-8 w-8 place-items-center rounded-lg border border-slate-200 text-ink hover:bg-slate-50">
-                            <Plus className="h-3.5 w-3.5" />
-                          </button>
-                        </div>
-                      )}
-
+                      <div className="flex shrink-0 items-center gap-1.5">
+                        <button
+                          onClick={() => adjustProteinQty(item.id, -1)}
+                          className="grid h-8 w-8 place-items-center rounded-lg border border-slate-200 text-ink hover:bg-slate-50"
+                        >
+                          <Minus className="h-3.5 w-3.5" />
+                        </button>
+                        <span className="w-6 text-center font-display text-sm font-bold text-ink">{item.portions}</span>
+                        <button
+                          onClick={() => adjustProteinQty(item.id, 1)}
+                          className="grid h-8 w-8 place-items-center rounded-lg border border-slate-200 text-ink hover:bg-slate-50"
+                        >
+                          <Plus className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
                       <div className="text-right">
-                        <p className="font-display text-lg font-bold text-ink">
-                          {item.lineCost === 0 ? "Free" : `₦${item.lineCost.toLocaleString()}`}
-                        </p>
+                        <p className="font-display text-lg font-bold text-ink">₦{item.lineCost.toLocaleString()}</p>
                         <p className="flex items-center justify-end gap-1 text-sm font-semibold text-emerald-600">
                           <Zap className="h-3.5 w-3.5" /> Satiety: {item.satiety}
                         </p>
@@ -305,11 +511,11 @@ export default function Result() {
                   );
                 })}
 
-                {/* Add another protein type — manual mode has no type-count ceiling */}
-                {allowedProteins.length > proteinItems.length && (
+                {/* Add another protein */}
+                {allowedProteins.length > displayProteins.length && (
                   <button
                     onClick={() => {
-                      const candidate = allowedProteins.find((p) => !proteinItems.some((pi) => pi.id === p.id));
+                      const candidate = allowedProteins.find((p) => !displayProteins.some((pi) => pi.id === p.id));
                       if (candidate) adjustProteinQty(candidate.id, 1);
                     }}
                     className="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-slate-300 py-3 text-sm font-semibold text-slate-500 hover:border-navy hover:text-navy"
@@ -318,10 +524,78 @@ export default function Result() {
                   </button>
                 )}
                 {proteinOverride && (
-                  <button onClick={resetProteins}
-                    className="flex items-center gap-1.5 text-xs font-semibold text-slate-400 hover:text-navy">
+                  <button
+                    onClick={resetProteins}
+                    className="flex items-center gap-1.5 text-xs font-semibold text-slate-400 hover:text-navy"
+                  >
                     <RotateCcw className="h-3 w-3" /> Reset protein to optimized pick
                   </button>
+                )}
+
+                {/* ── Side (Fried Plantain etc.) ── */}
+                {displaySide && (
+                  <div className={rowCls}>
+                    <div className="grid h-14 w-14 shrink-0 place-items-center rounded-lg bg-gradient-to-br from-navy to-navy-800 text-gold">
+                      <Zap className="h-6 w-6" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="font-display text-lg font-bold text-ink">{displaySide.name}</p>
+                      <p className="mt-2 text-sm text-slate-500">
+                        {CATEGORY_LABEL[displaySide.category] || displaySide.category}
+                        {" · "}
+                        {displaySide.portions} {displaySide.portions > 1 ? "portions" : "portion"}
+                        {displaySide.note ? ` · ${displaySide.note}` : ""}
+                      </p>
+                    </div>
+                    <div className="flex shrink-0 items-center gap-1.5">
+                      <button
+                        onClick={() => adjustSide(-1)}
+                        className="grid h-8 w-8 place-items-center rounded-lg border border-slate-200 text-ink hover:bg-slate-50"
+                      >
+                        <Minus className="h-3.5 w-3.5" />
+                      </button>
+                      <span className="w-6 text-center font-display text-sm font-bold text-ink">{displaySide.portions}</span>
+                      <button
+                        onClick={() => adjustSide(1)}
+                        disabled={displaySlack < (sideMenuItem?.price ?? Infinity)}
+                        className="grid h-8 w-8 place-items-center rounded-lg border border-slate-200 text-ink hover:bg-slate-50 disabled:opacity-30 disabled:hover:bg-transparent"
+                      >
+                        <Plus className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                    <div className="text-right">
+                      <p className="font-display text-lg font-bold text-ink">₦{displaySide.lineCost.toLocaleString()}</p>
+                      <p className="flex items-center justify-end gap-1 text-sm font-semibold text-emerald-600">
+                        <Zap className="h-3.5 w-3.5" /> Satiety: {displaySide.satiety}
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Add a side — shown for non-swallow meals when no side is present */}
+                {!displaySide && displayBase?.category !== CATEGORIES.SWALLOW && availableSides.length > 0 && (
+                  <div className="space-y-2">
+                    {showSidePicker && (
+                      <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+                        {availableSides.map((s) => (
+                          <button
+                            key={s.id}
+                            onClick={() => { setSidePortions(1); setShowSidePicker(false); }}
+                            className="flex w-full items-center justify-between border-b border-slate-100 px-4 py-2.5 text-sm text-ink hover:bg-slate-50 last:border-0"
+                          >
+                            <span className="font-medium">{s.name}</span>
+                            <span className="text-slate-500">₦{s.price.toLocaleString()} per piece</span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                    <button
+                      onClick={() => setShowSidePicker((v) => !v)}
+                      className="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-slate-300 py-3 text-sm font-semibold text-slate-500 hover:border-navy hover:text-navy"
+                    >
+                      <Plus className="h-4 w-4" /> Add a side
+                    </button>
+                  </div>
                 )}
 
                 <div className="flex flex-col gap-4 border-t border-slate-100 pt-5 sm:flex-row sm:items-center sm:justify-between">
@@ -330,11 +604,17 @@ export default function Result() {
                     {budget.toLocaleString()} limit.
                   </p>
                   <div className="flex gap-3">
-                    <button onClick={() => navigate("/app/optimizer")} className="inline-flex items-center gap-2 rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-semibold text-ink hover:bg-slate-50">
+                    <button
+                      onClick={() => navigate("/app/optimizer")}
+                      className="inline-flex items-center gap-2 rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-semibold text-ink hover:bg-slate-50"
+                    >
                       <RefreshCw className="h-4 w-4" /> Re-optimise
                     </button>
                     {isSupabaseConfigured && (
-                      <button onClick={() => setSaveOpen(true)} className="inline-flex items-center gap-2 rounded-xl bg-navy px-4 py-2.5 text-sm font-semibold text-white hover:bg-navy-800">
+                      <button
+                        onClick={() => setSaveOpen(true)}
+                        className="inline-flex items-center gap-2 rounded-xl bg-navy px-4 py-2.5 text-sm font-semibold text-white hover:bg-navy-800"
+                      >
                         <Heart className="h-4 w-4" /> Save to Favorites
                       </button>
                     )}
@@ -355,19 +635,19 @@ export default function Result() {
                   <p className="mt-2 text-sm leading-relaxed text-slate-600">
                     {isManuallyAdjusted
                       ? `You're in full manual control — swallow/base and protein portions move independently, with no fixed ratio between them. The only limits are your ₦${budget.toLocaleString()} budget and which proteins are culturally compatible with your chosen base.`
-                      : `The engine selected this combination because it yields the highest total satiety (${result.satiety} satiety points) while strictly staying within your ₦${budget.toLocaleString()} budget and obeying every cafeteria pairing rule. You get the most fullness for every Naira spent.`}
+                      : `The engine selected this combination because it yields the highest total satiety (${displayRawSatiety} satiety points) while strictly staying within your ₦${budget.toLocaleString()} budget and obeying every cafeteria pairing rule. You get the most fullness for every Naira spent.`}
                   </p>
                 </div>
                 <div className="rounded-xl border border-slate-200 p-5">
                   <div className="flex items-center justify-between text-sm">
                     <span className="font-semibold text-ink">Budget Utilization</span>
-                    <span className="font-bold text-emerald-600">{result.efficiency}%</span>
+                    <span className="font-bold text-emerald-600">{displayEfficiency}%</span>
                   </div>
                   <div className="mt-2 h-2 rounded-full bg-slate-100">
-                    <div className="h-full rounded-full bg-emerald-500" style={{ width: `${result.efficiency}%` }} />
+                    <div className="h-full rounded-full bg-emerald-500" style={{ width: `${displayEfficiency}%` }} />
                   </div>
                   <p className="mt-2 text-sm text-slate-500">
-                    {result.efficiency}% of your budget was spent — ₦{result.slack.toLocaleString()} unspent (budget slack).
+                    {displayEfficiency}% of your budget was spent — ₦{displaySlack.toLocaleString()} unspent (budget slack).
                   </p>
                 </div>
               </div>
@@ -379,18 +659,18 @@ export default function Result() {
             <div className="card p-6">
               <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Total Cost</p>
               <p className="mt-1 font-display text-4xl font-extrabold text-ink">
-                ₦{result.cost.toLocaleString()}
+                ₦{displayCost.toLocaleString()}
                 <span className="text-base font-medium text-slate-400"> / {budget.toLocaleString()}</span>
               </p>
               <p className="mt-2 inline-flex items-center gap-2 font-semibold text-emerald-600">
-                <CheckCircle2 className="h-5 w-5" /> {result.cost <= budget ? "Within Budget" : "Over Budget"}
+                <CheckCircle2 className="h-5 w-5" /> {displayCost <= budget ? "Within Budget" : "Over Budget"}
               </p>
             </div>
 
             <div className="card p-6">
               <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Satiety Score</p>
               <p className="mt-1 font-display text-4xl font-extrabold text-ink">
-                {result.satietyScore}<span className="text-base font-medium text-slate-400"> / 100</span>
+                {displaySatietyScore}<span className="text-base font-medium text-slate-400"> / 100</span>
               </p>
               <div className="mt-2 flex items-center gap-2">
                 <div className="flex">
@@ -404,11 +684,11 @@ export default function Result() {
 
             <div className="card border-l-4 border-l-gold p-6">
               <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Budget Slack</p>
-              <p className="mt-1 font-display text-3xl font-extrabold text-gold-dark">₦{result.slack.toLocaleString()}</p>
+              <p className="mt-1 font-display text-3xl font-extrabold text-gold-dark">₦{displaySlack.toLocaleString()}</p>
               <p className="mt-2 text-sm text-slate-500">
                 {(() => {
-                  const slack = result.slack;
-                  const hasPlantain = result.items.some((i) => i.id === "plantain" || i.name?.toLowerCase().includes("plantain"));
+                  const slack = displaySlack;
+                  const hasPlantain = displayItems.some((i) => i.id === "plantain" || i.name?.toLowerCase().includes("plantain"));
                   if (slack === 0) return "Perfectly optimized — every Naira is spent.";
                   if (slack < 50) return "Tightly optimized — almost no waste.";
                   if (slack < 100) return `₦${slack.toLocaleString()} left over — enough for a sachet of water.`;
@@ -421,8 +701,7 @@ export default function Result() {
               </p>
             </div>
 
-            <button onClick={() => navigate("/app/trends")}
-              className="btn-gold w-full">
+            <button onClick={() => navigate("/app/trends")} className="btn-gold w-full">
               <TrendingUp className="h-4 w-4" /> View Price Trends
             </button>
           </div>
@@ -432,8 +711,14 @@ export default function Result() {
       </div>
 
       {saveOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4" onClick={() => setSaveOpen(false)}>
-          <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-cardhover" onClick={(e) => e.stopPropagation()}>
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4"
+          onClick={() => setSaveOpen(false)}
+        >
+          <div
+            className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-cardhover"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="mx-auto grid h-12 w-12 place-items-center rounded-2xl bg-gold/15">
               <Heart className="h-6 w-6 text-gold-dark" />
             </div>
@@ -452,10 +737,17 @@ export default function Result() {
               </p>
             )}
             <div className="mt-4 flex gap-2">
-              <button onClick={() => setSaveOpen(false)} className="flex-1 rounded-xl border border-slate-200 py-2.5 text-sm font-semibold text-slate-500 hover:bg-slate-50">
+              <button
+                onClick={() => setSaveOpen(false)}
+                className="flex-1 rounded-xl border border-slate-200 py-2.5 text-sm font-semibold text-slate-500 hover:bg-slate-50"
+              >
                 Cancel
               </button>
-              <button onClick={handleSavePlan} disabled={saving} className="btn-primary flex-1 disabled:opacity-60">
+              <button
+                onClick={handleSavePlan}
+                disabled={saving}
+                className="btn-primary flex-1 disabled:opacity-60"
+              >
                 {saving ? <RefreshCw className="h-4 w-4 animate-spin" /> : "Save"}
               </button>
             </div>
