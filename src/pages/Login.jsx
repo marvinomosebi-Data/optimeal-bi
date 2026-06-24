@@ -74,8 +74,15 @@ export default function Login() {
   useEffect(() => {
     if (!supabase) return;
 
-    // Listen FIRST before checking session
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+    const hash = window.location.hash;
+    if (hash.includes("type=recovery") || hash.includes("access_token")) {
+      setIsRecovery(true);
+      setTab("newpw");
+      setErr("");
+      return;
+    }
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
       if (event === "PASSWORD_RECOVERY") {
         // User clicked the reset link — show new password form
         setIsRecovery(true);
@@ -83,23 +90,15 @@ export default function Login() {
         setErr("");
         return;
       }
-      if (event === "SIGNED_IN" && !isRecovery) {
+      if (event === "SIGNED_IN") {
         getRole().then(role => {
           navigate(role === "admin" ? "/app/admin" : "/app/plan", { replace: true });
         });
       }
     });
 
-    // Check existing session (but not during recovery)
     getSession().then(async (s) => {
-      if (s && !isRecovery) {
-        // Check if this session was from a recovery link
-        const hash = window.location.hash;
-        if (hash.includes("type=recovery")) {
-          setIsRecovery(true);
-          setTab("newpw");
-          return;
-        }
+      if (s) {
         const role = await getRole();
         navigate(role === "admin" ? "/app/admin" : "/app/plan", { replace: true });
       }

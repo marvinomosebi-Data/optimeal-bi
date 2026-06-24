@@ -1,12 +1,10 @@
 import { useState, useRef, useEffect } from "react";
-import { Bell, Sun, Moon, AlertTriangle, CheckCircle2, X, Menu, Clock } from "lucide-react";
+import { Bell, AlertTriangle, CheckCircle2, X, Menu, Clock } from "lucide-react";
 import { useAuth } from "../lib/auth.jsx";
-import { useTheme } from "../lib/theme.jsx";
 import { useNotifications } from "../lib/notifications.jsx";
 
 export function Topbar({ title, onMenuOpen }) {
   const { session, role } = useAuth();
-  const { dark, toggleDark } = useTheme();
   const { notifications, unread, markRead } = useNotifications();
   const [showNotifs, setShowNotifs]   = useState(false);
   const [showProfile, setShowProfile] = useState(false);
@@ -50,18 +48,6 @@ export function Topbar({ title, onMenuOpen }) {
 
       {/* Right icons */}
       <div className="flex items-center gap-1 shrink-0">
-
-        {/* Dark mode toggle */}
-        <button
-          onClick={toggleDark}
-          className="grid h-9 w-9 place-items-center rounded-xl text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 transition"
-          title={dark ? "Switch to light mode" : "Switch to dark mode"}
-        >
-          {dark
-            ? <Sun className="h-5 w-5 text-amber-400" />
-            : <Moon className="h-5 w-5 text-slate-500" />}
-        </button>
-
         {/* Notification bell */}
         <div className="relative" ref={notifRef}>
           <button

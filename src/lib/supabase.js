@@ -102,7 +102,7 @@ export async function signOut() {
 export async function resetPasswordByRecoveryEmail(bowenEmail) {
   if (!supabase) throw new Error("Supabase not configured");
   const { error } = await supabase.auth.resetPasswordForEmail(bowenEmail, {
-    redirectTo: window.location.origin + "/",
+    redirectTo: "https://optimeal-bi.vercel.app/",
   });
   if (error) throw error;
 }

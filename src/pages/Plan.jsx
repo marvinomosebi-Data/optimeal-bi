@@ -13,6 +13,14 @@ const MEAL_COLORS = {
 };
 const APPETITE_OPTS = ["Light", "Normal", "Large"];
 
+function getActiveMealByTime() {
+  const h = new Date().getHours();
+  if (h >= 9 && h < 12) return "breakfast";
+  if (h >= 12 && h < 16) return "lunch";
+  if (h >= 16 && h <= 20) return "dinner";
+  return "lunch";
+}
+
 function StarRating({ rating }) {
   return (
     <div className="flex items-center gap-0.5">
@@ -42,7 +50,7 @@ function getSuggestions(budget, appetite) {
 export default function Plan() {
   const navigate = useNavigate();
   const { session } = useAuth();
-  const [activeMeal, setActiveMeal] = useState("lunch");
+  const [activeMeal, setActiveMeal] = useState(getActiveMealByTime());
   const [budgets, setBudgets]       = useState({ breakfast: "", lunch: "", dinner: "" });
   const [appetite, setAppetite]     = useState("Normal");
 
@@ -52,22 +60,8 @@ export default function Plan() {
 
   const userName = session?.user?.user_metadata?.full_name?.split(" ")[0] || "there";
 
-  function handleBudgetChange(e) {
-    // Only allow digits, no spin buttons behavior
-    const val = e.target.value.replace(/[^0-9]/g, "");
-    setBudgets(b => ({ ...b, [activeMeal]: val }));
-  }
-
   function goToOptimizer(cafe) {
-    const params = new URLSearchParams({
-      budget: String(budget),
-      appetite,
-      cafe: String(cafe.id),
-      meal: activeMeal,
-      crave: "",
-      avoid: "",
-    });
-    navigate(`/app/optimizer?${params}`);
+    navigate(`/app/optimizer?budget=${budget}&cafe=${cafe.id}&meal=${activeMeal}&appetite=${appetite}&crave=&avoid=`);
   }
 
   const mc = MEAL_COLORS[activeMeal];
@@ -132,7 +126,7 @@ export default function Plan() {
               inputMode="numeric"
               pattern="[0-9]*"
               value={rawVal}
-              onChange={handleBudgetChange}
+              onChange={e => setBudgets(b => ({ ...b, [activeMeal]: e.target.value.replace(/[^0-9]/g, "") }))}
               placeholder="0"
               className="w-full bg-transparent font-display text-2xl font-bold text-ink dark:text-slate-100 outline-none placeholder:text-slate-300 dark:placeholder:text-slate-600"
             />
