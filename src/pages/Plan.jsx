@@ -14,10 +14,10 @@ const MEAL_COLORS = {
 const APPETITE_OPTS = ["Light", "Normal", "Large"];
 
 function getActiveMealByTime() {
-  const h = new Date().getHours();
-  if (h >= 9 && h < 12) return "breakfast";
-  if (h >= 12 && h < 16) return "lunch";
-  if (h >= 16 && h <= 20) return "dinner";
+  const hour = new Date().getHours();
+  if (hour >= 9 && hour < 12) return "breakfast";
+  if (hour >= 12 && hour < 16) return "lunch";
+  if (hour >= 16 && hour <= 20) return "dinner";
   return "lunch";
 }
 
@@ -32,13 +32,20 @@ function StarRating({ rating }) {
   );
 }
 
-function getSuggestions(budget, appetite) {
-  if (!budget || budget < 400) return { cheapest: [], topRated: [] };
+function isAtLeastMinimumBudget(value) {
+  const digits = (value || "").replace(/^0+/, "");
+  if (!digits) return false;
+  if (digits.length !== 3) return digits.length > 3;
+  return digits >= "400";
+}
+
+function getSuggestions(budgetText, appetite) {
+  if (!isAtLeastMinimumBudget(budgetText)) return { cheapest: [], topRated: [] };
   const scored = CAFETERIAS.map(cafe => {
     const menu = getMenuForCafeteria(cafe.id);
-    const result = optimizeMeal({ menu, budget, appetite, crave: new Set(), avoid: new Set() });
+    const result = optimizeMeal({ menu, budget: budgetText, appetite, crave: new Set(), avoid: new Set() });
     if (!result?.feasible) return null;
-    return { cafe, cost: result.totalCost, savings: budget - result.totalCost };
+    return { cafe, cost: result.totalCost, savings: budgetText - result.totalCost };
   }).filter(Boolean);
   if (!scored.length) return { cheapest: [], topRated: [] };
   return {
@@ -54,13 +61,15 @@ export default function Plan() {
   const [budgets, setBudgets]       = useState({ breakfast: "", lunch: "", dinner: "" });
   const [appetite, setAppetite]     = useState("Normal");
 
-  const rawVal = budgets[activeMeal];
-  const budget = rawVal === "" ? 0 : Math.max(0, parseInt(rawVal.replace(/\D/g, ""), 10) || 0);
-  const { cheapest, topRated } = useMemo(() => getSuggestions(budget, appetite), [budget, appetite]);
+  const budgetText = budgets[activeMeal] ?? "";
+  const hasBudget = budgetText !== "";
+  const canSuggest = isAtLeastMinimumBudget(budgetText);
+  const { cheapest, topRated } = useMemo(() => getSuggestions(budgetText, appetite), [budgetText, appetite]);
 
   const userName = session?.user?.user_metadata?.full_name?.split(" ")[0] || "there";
 
   function goToOptimizer(cafe) {
+    const budget = budgets[activeMeal] ?? "";
     navigate(`/app/optimizer?budget=${budget}&cafe=${cafe.id}&meal=${activeMeal}&appetite=${appetite}&crave=&avoid=`);
   }
 
@@ -125,17 +134,20 @@ export default function Plan() {
               type="text"
               inputMode="numeric"
               pattern="[0-9]*"
-              value={rawVal}
-              onChange={e => setBudgets(b => ({ ...b, [activeMeal]: e.target.value.replace(/[^0-9]/g, "") }))}
+              value={budgets[activeMeal] ?? ""}
+              onChange={e => {
+                const val = e.target.value.replace(/[^0-9]/g, "");
+                setBudgets(b => ({ ...b, [activeMeal]: val }));
+              }}
               placeholder="0"
               className="w-full bg-transparent font-display text-2xl font-bold text-ink dark:text-slate-100 outline-none placeholder:text-slate-300 dark:placeholder:text-slate-600"
             />
           </div>
-          {budget > 0 && budget < 400 && (
+          {hasBudget && !canSuggest && (
             <p className="mt-2 text-xs text-amber-600 font-medium">⚠️ Minimum for a meal is ₦400</p>
           )}
-          {budget >= 400 && (
-            <p className="mt-2 text-xs text-emerald-600 font-medium">✓ Budget of ₦{budget.toLocaleString()} — showing cafeteria suggestions below</p>
+          {canSuggest && (
+            <p className="mt-2 text-xs text-emerald-600 font-medium">✓ Budget of ₦{budgetText} — showing cafeteria suggestions below</p>
           )}
         </div>
 
@@ -163,7 +175,7 @@ export default function Plan() {
       </div>
 
       {/* Suggestions */}
-      {budget >= 400 && (
+      {canSuggest && (
         <div className="space-y-5">
           {cheapest.length > 0 && (
             <div>
@@ -172,7 +184,7 @@ export default function Plan() {
               </p>
               <div className="space-y-2">
                 {cheapest.map((item, i) => (
-                  <CafeCard key={item.cafe.id} item={item} budget={budget} rank={i+1} badge="value" onSelect={goToOptimizer} />
+                  <CafeCard key={item.cafe.id} item={item} rank={i+1} badge="value" onSelect={goToOptimizer} />
                 ))}
               </div>
             </div>
@@ -184,7 +196,7 @@ export default function Plan() {
               </p>
               <div className="space-y-2">
                 {topRated.map((item, i) => (
-                  <CafeCard key={item.cafe.id} item={item} budget={budget} rank={i+1} badge="rated" onSelect={goToOptimizer} />
+                  <CafeCard key={item.cafe.id} item={item} rank={i+1} badge="rated" onSelect={goToOptimizer} />
                 ))}
               </div>
             </div>
@@ -198,7 +210,7 @@ export default function Plan() {
         </div>
       )}
 
-      {budget === 0 && (
+      {!hasBudget && (
         <div className="card p-8 text-center">
           <div className="mx-auto mb-3 grid h-14 w-14 place-items-center rounded-2xl bg-slate-100 dark:bg-slate-800">
             <MealIcon className="h-7 w-7 text-slate-400" />
@@ -213,7 +225,7 @@ export default function Plan() {
   );
 }
 
-function CafeCard({ item, budget, rank, badge, onSelect }) {
+function CafeCard({ item, rank, badge, onSelect }) {
   const { cafe, cost, savings } = item;
   return (
     <button

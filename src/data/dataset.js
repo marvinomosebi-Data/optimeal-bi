@@ -40,7 +40,7 @@ export const STANDARD_MENU = [
 export const CAFETERIAS = [
   {
     id:1, name:"BBSF", code:"BBSF",
-    side:"Permanent Side", rating:4.5, reviewCount:128,
+    side:"Permanent Side", location:"Permanent Side", rating:4.5, reviewCount:128,
     additions:[
       { id:"chicken",       name:"Chicken",        category:CATEGORIES.PROTEIN, price:1500, satiety:9,  maxPortions:1 },
       { id:"chicken_large", name:"Chicken (Large)",category:CATEGORIES.PROTEIN, price:2000, satiety:11, maxPortions:1 },
@@ -49,7 +49,7 @@ export const CAFETERIAS = [
   },
   {
     id:2, name:"Jubilee", code:"Jubilee",
-    side:"Permanent Side", rating:4.0, reviewCount:95,
+    side:"Permanent Side", location:"Permanent Side", rating:4.0, reviewCount:95,
     additions:[
       { id:"rice_beans", name:"Rice & Beans", category:CATEGORIES.GRAINS,  price:350,  satiety:8, maxPortions:2, dualRole:true },
       { id:"chicken",    name:"Chicken",      category:CATEGORIES.PROTEIN, price:1500, satiety:9, maxPortions:1 },
@@ -58,17 +58,17 @@ export const CAFETERIAS = [
   },
   {
     id:3, name:"Blessed", code:"Blessed",
-    side:"Permanent Side", rating:3.8, reviewCount:72,
+    side:"Permanent Side", location:"Permanent Side", rating:3.8, reviewCount:72,
     additions:[], overrides:{},
   },
   {
     id:4, name:"Y2k", code:"Y2k",
-    side:"Permanent Side", rating:3.9, reviewCount:84,
+    side:"Permanent Side", location:"Permanent Side", rating:3.9, reviewCount:84,
     additions:[], overrides:{ sausage:{ price:300 } },
   },
   {
     id:5, name:"Divine", code:"Divine",
-    side:"Temporary Side", rating:4.2, reviewCount:110,
+    side:"Temporary Side", location:"Temporary Side", rating:4.2, reviewCount:110,
     additions:[
       { id:"big_beef",      name:"Big Beef",        category:CATEGORIES.PROTEIN, price:500,  satiety:9,  maxPortions:1 },
       { id:"chicken",       name:"Chicken",         category:CATEGORIES.PROTEIN, price:1500, satiety:9,  maxPortions:1 },
@@ -78,7 +78,7 @@ export const CAFETERIAS = [
   },
   {
     id:6, name:"Kemi Bee", code:"KemiBee",
-    side:"Temporary Side", rating:4.3, reviewCount:103,
+    side:"Temporary Side", location:"Temporary Side", rating:4.3, reviewCount:103,
     additions:[
       { id:"big_chicken", name:"Big Chicken", category:CATEGORIES.PROTEIN, price:2000, satiety:11, maxPortions:1 },
       { id:"gbegiri",     name:"Gbegiri",     category:CATEGORIES.SOUP,   price:0,    satiety:2,  maxPortions:1, isFree:true },
@@ -87,12 +87,12 @@ export const CAFETERIAS = [
   },
   {
     id:7, name:"Forza", code:"Forza",
-    side:"Temporary Side", rating:3.7, reviewCount:61,
+    side:"Temporary Side", location:"Temporary Side", rating:3.7, reviewCount:61,
     additions:[], overrides:{},
   },
   {
     id:8, name:"Sumptuous", code:"Sumptuous",
-    side:"Temporary Side", rating:3.6, reviewCount:58,
+    side:"Temporary Side", location:"Temporary Side", rating:3.6, reviewCount:58,
     additions:[], overrides:{},
   },
 ];

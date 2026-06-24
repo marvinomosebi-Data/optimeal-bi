@@ -6,6 +6,24 @@ import { supabase, isSupabaseConfigured } from "./supabase.js";
 import { CAFETERIAS, getMenuForCafeteria } from "../data/dataset.js";
 import nbs from "../data/nbsPrices.json";
 
+const CAFETERIA_LOCATIONS = {
+  BBSF: "Permanent Side",
+  Jubilee: "Permanent Side",
+  Y2k: "Permanent Side",
+  Y2K: "Permanent Side",
+  Blessed: "Permanent Side",
+  Divine: "Temporary Side",
+  "Kemi Bee": "Temporary Side",
+  KemiBee: "Temporary Side",
+  Forza: "Temporary Side",
+  Sumptuous: "Temporary Side",
+};
+
+function normalizeCafeteria(row) {
+  const location = CAFETERIA_LOCATIONS[row.name] ?? CAFETERIA_LOCATIONS[row.code] ?? row.location ?? row.side;
+  return { ...row, location, side: location };
+}
+
 // Supabase's RPC returns raw Postgres columns (snake_case): max_portions,
 // is_free, dual_role. The optimizer engine and UI were written against the
 // bundled dataset's camelCase shape (maxPortions, isFree, dualRole). Without
@@ -37,9 +55,9 @@ function normalizeMenuItem(row) {
 export async function fetchCafeterias() {
   if (isSupabaseConfigured) {
     const { data, error } = await supabase.from("cafeterias").select("*").order("id");
-    if (!error && data?.length) return data;
+    if (!error && data?.length) return data.map(normalizeCafeteria);
   }
-  return CAFETERIAS;
+  return CAFETERIAS.map(normalizeCafeteria);
 }
 
 export async function fetchMenu(cafeId) {

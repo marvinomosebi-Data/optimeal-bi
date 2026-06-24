@@ -183,7 +183,7 @@ function PriceRow({ item, onSave }) {
   );
 }
 
-function CampusPriceRegulation({ refreshKey, bumpRefresh }) {
+function CampusPriceRegulation({ refreshKey, bumpRefresh, onPricesUpdated }) {
   const [items, setItems] = useState([]);
   const [cafeItems, setCafeItems] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -236,7 +236,7 @@ function CampusPriceRegulation({ refreshKey, bumpRefresh }) {
                   {filteredItems.map((item) => (
                     <PriceRow key={item.id} item={item} onSave={async (newPrice) => {
                       await updateFoodItemPrice(item.id, newPrice);
-                      try { localStorage.setItem("optimeal_prices_last_updated", String(Date.now())); } catch(_) {}
+                      await onPricesUpdated?.();
                       bumpRefresh();
                     }} />
                   ))}
@@ -442,6 +442,7 @@ function RecentEntries({ refresh }) {
    ============================================================ */
 export default function Admin() {
   const summary  = useMemo(() => getPriceSummary(), []);
+  const { markPricesUpdated } = useNotifications();
   const [refreshKey, setRefreshKey] = useState(0);
   const topVolatile = [...summary].sort((a, b) => b.volatility - a.volatility).slice(0, 3);
 
@@ -485,7 +486,11 @@ export default function Admin() {
             <p className="mt-1 text-sm text-slate-400">Increase or decrease what students pay, in response to national food prices.</p>
           </div>
           <div className="p-6">
-            <CampusPriceRegulation refreshKey={refreshKey} bumpRefresh={() => setRefreshKey((k) => k + 1)} />
+            <CampusPriceRegulation
+              refreshKey={refreshKey}
+              bumpRefresh={() => setRefreshKey((k) => k + 1)}
+              onPricesUpdated={markPricesUpdated}
+            />
           </div>
         </section>
 

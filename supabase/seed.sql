@@ -1,14 +1,14 @@
 -- OptiMeal BI seed data (generated from CSV/docx datasets)
 
 insert into cafeterias (id,name,location,code) values
-  (1,'BBSF','Main Campus','Caf A'),
-  (2,'Jubilee','Chapel Area','Caf B'),
-  (3,'Blessed','Hostel Block','Caf C'),
-  (4,'Y2k','Commons','Caf D'),
-  (5,'Divine','Main Campus','Caf E'),
-  (6,'Kemi Bee','Main Campus','Caf F'),
-  (7,'Forza','Main Campus','Caf G'),
-  (8,'Sumptuous','Main Campus','Caf H')
+  (1,'BBSF','Permanent Side','Caf A'),
+  (2,'Jubilee','Permanent Side','Caf B'),
+  (3,'Blessed','Permanent Side','Caf C'),
+  (4,'Y2k','Permanent Side','Caf D'),
+  (5,'Divine','Temporary Side','Caf E'),
+  (6,'Kemi Bee','Temporary Side','Caf F'),
+  (7,'Forza','Temporary Side','Caf G'),
+  (8,'Sumptuous','Temporary Side','Caf H')
 on conflict (id) do nothing;
 
 -- One-time cleanup: an earlier seed collapsed the 4 free soups into a single

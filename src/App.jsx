@@ -10,6 +10,7 @@ import Trends from "./pages/Trends.jsx";
 import Spending from "./pages/Spending.jsx";
 import Admin from "./pages/Admin.jsx";
 import Favorites from "./pages/Favorites.jsx";
+import NotFound from "./pages/NotFound.jsx";
 
 export default function App() {
   return (
@@ -40,7 +41,7 @@ export default function App() {
           }
         />
       </Route>
-      <Route path="*" element={<Navigate to="/" replace />} />
+      <Route path="*" element={<NotFound />} />
     </Routes>
   );
 }

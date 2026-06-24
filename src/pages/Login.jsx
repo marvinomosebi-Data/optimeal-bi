@@ -10,23 +10,11 @@ import {
   getSession, getRole, supabase
 } from "../lib/supabase.js";
 import { ID_EXAMPLES, formatIdInput } from "../lib/identity.js";
+import logo from "../assets/icon.png";
 
 /* ── Logo SVG ── */
 function Logo({ size = 40 }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <rect width="40" height="40" rx="10" fill="#0B1F3A"/>
-      {/* Bowl */}
-      <ellipse cx="20" cy="26" rx="10" ry="4" fill="none" stroke="#F5C84B" strokeWidth="2"/>
-      <path d="M10 26 Q10 34 20 34 Q30 34 30 26" fill="#F5C84B" fillOpacity="0.3" stroke="#F5C84B" strokeWidth="1.5"/>
-      {/* L shape */}
-      <path d="M11 10 L11 24 L18 24" stroke="#F5C84B" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
-      {/* Analytics bars */}
-      <rect x="22" y="14" width="3" height="8" rx="1" fill="#F5C84B" opacity="0.9"/>
-      <rect x="26.5" y="11" width="3" height="11" rx="1" fill="#F5C84B"/>
-      <rect x="31" y="16" width="3" height="6" rx="1" fill="#F5C84B" opacity="0.7"/>
-    </svg>
-  );
+  return <img src={logo} alt="OptiMeal BI" className="h-10 w-10 rounded-xl" />;
 }
 
 function ResetCard({ children, onBack, err }) {
