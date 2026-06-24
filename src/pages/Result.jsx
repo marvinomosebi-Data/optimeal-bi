@@ -264,7 +264,11 @@ export default function Result() {
     } finally { setSaving(false); }
   }
 
-  const rowCls = "flex flex-wrap items-center gap-4 rounded-xl border border-slate-200 p-4";
+  const cardCls = "rounded-xl border border-slate-200 p-4";
+  const cardInner = "flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4";
+  const cardIconGroup = "flex items-center gap-3 sm:contents";
+  const cardControls = "flex items-center justify-center gap-1.5 sm:shrink-0";
+  const cardPrice = "text-center sm:ml-auto sm:shrink-0 sm:text-right";
 
   return (
     <>
@@ -311,60 +315,64 @@ export default function Result() {
 
                 {/* ── Base (Swallow / Grains) ── */}
                 {displayBase && (
-                  <div className={rowCls}>
-                    <div className="grid h-14 w-14 shrink-0 place-items-center rounded-lg bg-gradient-to-br from-navy to-navy-800 text-gold">
-                      <Zap className="h-6 w-6" />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="font-display text-lg font-bold text-ink">{displayBase.name}</p>
-                      <p className="mt-2 text-sm text-slate-500">
-                        {CATEGORY_LABEL[displayBase.category] || displayBase.category}
-                        {" · "}
-                        {displayBase.portions} {displayBase.portions > 1 ? "portions" : "portion"}
-                        {displayBase.note && !displayBase.note.toLowerCase().includes("auto") ? ` · ${displayBase.note}` : ""}
-                      </p>
-                    </div>
-                    {isAdjustableBase && (
-                      <div className="flex shrink-0 items-center gap-1.5">
-                        {baseOverride && (
-                          <button onClick={resetBase} title="Reset to optimized portion"
-                            className="mr-1 grid h-7 w-7 place-items-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-navy">
-                            <RotateCcw className="h-3.5 w-3.5" />
-                          </button>
-                        )}
-                        <button
-                          onClick={() => {
-                            if (displayBase.portions <= 1 && displayBase.category === CATEGORIES.SWALLOW) {
-                              setBaseRemoved(true);
-                              setBaseOverride(null);
-                              setSoupOverride(null);
-                              setShowSoupPicker(false);
-                            } else {
-                              adjustBasePortions(-1);
-                            }
-                          }}
-                          disabled={displayBase.portions <= 1 && displayBase.category !== CATEGORIES.SWALLOW}
-                          className="grid h-8 w-8 place-items-center rounded-lg border border-slate-200 text-ink hover:bg-slate-50 disabled:opacity-30 disabled:hover:bg-transparent"
-                        >
-                          <Minus className="h-3.5 w-3.5" />
-                        </button>
-                        <span className="w-6 text-center font-display text-sm font-bold text-ink">{displayBase.portions}</span>
-                        <button
-                          onClick={() => adjustBasePortions(1)}
-                          disabled={displayBase.portions >= maxBasePortions}
-                          className="grid h-8 w-8 place-items-center rounded-lg border border-slate-200 text-ink hover:bg-slate-50 disabled:opacity-30 disabled:hover:bg-transparent"
-                        >
-                          <Plus className="h-3.5 w-3.5" />
-                        </button>
+                  <div className={cardCls}>
+                    <div className={cardInner}>
+                      <div className={cardIconGroup}>
+                        <div className="grid h-14 w-14 shrink-0 place-items-center rounded-lg bg-gradient-to-br from-navy to-navy-800 text-gold">
+                          <Zap className="h-6 w-6" />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="font-display text-lg font-bold text-ink">{displayBase.name}</p>
+                          <p className="mt-1 text-sm text-slate-500">
+                            {CATEGORY_LABEL[displayBase.category] || displayBase.category}
+                            {" · "}
+                            {displayBase.portions} {displayBase.portions > 1 ? "portions" : "portion"}
+                            {displayBase.note && !displayBase.note.toLowerCase().includes("auto") ? ` · ${displayBase.note}` : ""}
+                          </p>
+                        </div>
                       </div>
-                    )}
-                    <div className="text-right">
-                      <p className="font-display text-lg font-bold text-ink">
-                        ₦{displayBase.lineCost.toLocaleString()}
-                      </p>
-                      <p className="flex items-center justify-end gap-1 text-sm font-semibold text-emerald-600">
-                        <Zap className="h-3.5 w-3.5" /> Satiety: {displayBase.satiety}
-                      </p>
+                      {isAdjustableBase && (
+                        <div className={cardControls}>
+                          {baseOverride && (
+                            <button onClick={resetBase} title="Reset to optimized portion"
+                              className="mr-1 grid h-7 w-7 place-items-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-navy">
+                              <RotateCcw className="h-3.5 w-3.5" />
+                            </button>
+                          )}
+                          <button
+                            onClick={() => {
+                              if (displayBase.portions <= 1 && displayBase.category === CATEGORIES.SWALLOW) {
+                                setBaseRemoved(true);
+                                setBaseOverride(null);
+                                setSoupOverride(null);
+                                setShowSoupPicker(false);
+                              } else {
+                                adjustBasePortions(-1);
+                              }
+                            }}
+                            disabled={displayBase.portions <= 1 && displayBase.category !== CATEGORIES.SWALLOW}
+                            className="grid h-8 w-8 place-items-center rounded-lg border border-slate-200 text-ink hover:bg-slate-50 disabled:opacity-30 disabled:hover:bg-transparent"
+                          >
+                            <Minus className="h-3.5 w-3.5" />
+                          </button>
+                          <span className="w-6 text-center font-display text-sm font-bold text-ink">{displayBase.portions}</span>
+                          <button
+                            onClick={() => adjustBasePortions(1)}
+                            disabled={displayBase.portions >= maxBasePortions}
+                            className="grid h-8 w-8 place-items-center rounded-lg border border-slate-200 text-ink hover:bg-slate-50 disabled:opacity-30 disabled:hover:bg-transparent"
+                          >
+                            <Plus className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
+                      )}
+                      <div className={cardPrice}>
+                        <p className="font-display text-lg font-bold text-ink">
+                          ₦{displayBase.lineCost.toLocaleString()}
+                        </p>
+                        <p className="flex items-center justify-center gap-1 text-sm font-semibold text-emerald-600 sm:justify-end">
+                          <Zap className="h-3.5 w-3.5" /> Satiety: {displayBase.satiety}
+                        </p>
+                      </div>
                     </div>
                   </div>
                 )}
@@ -402,26 +410,32 @@ export default function Result() {
 
                 {/* ── Free Soup (swallow meals only) ── */}
                 {displayBase?.category === CATEGORIES.SWALLOW && displaySoup && (
-                  <div className={rowCls}>
-                    <div className="grid h-14 w-14 shrink-0 place-items-center rounded-lg bg-gradient-to-br from-navy to-navy-800 text-gold">
-                      <Zap className="h-6 w-6" />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="font-display text-lg font-bold text-ink">{displaySoup.name}</p>
-                      <p className="mt-2 text-sm text-slate-500">Free Soup · 1 portion</p>
-                    </div>
-                    <button
-                      onClick={() => { setSoupOverride("none"); setShowSoupPicker(false); }}
-                      title="Remove soup"
-                      className="grid h-8 w-8 shrink-0 place-items-center rounded-lg border border-slate-200 text-slate-400 hover:border-red-200 hover:bg-red-50 hover:text-red-500"
-                    >
-                      <X className="h-3.5 w-3.5" />
-                    </button>
-                    <div className="text-right">
-                      <p className="font-display text-lg font-bold text-ink">Free</p>
-                      <p className="flex items-center justify-end gap-1 text-sm font-semibold text-emerald-600">
-                        <Zap className="h-3.5 w-3.5" /> Satiety: {displaySoup.satiety}
-                      </p>
+                  <div className={cardCls}>
+                    <div className={cardInner}>
+                      <div className={cardIconGroup}>
+                        <div className="grid h-14 w-14 shrink-0 place-items-center rounded-lg bg-gradient-to-br from-navy to-navy-800 text-gold">
+                          <Zap className="h-6 w-6" />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="font-display text-lg font-bold text-ink">{displaySoup.name}</p>
+                          <p className="mt-1 text-sm text-slate-500">Free Soup · 1 portion</p>
+                        </div>
+                      </div>
+                      <div className={cardControls}>
+                        <button
+                          onClick={() => { setSoupOverride("none"); setShowSoupPicker(false); }}
+                          title="Remove soup"
+                          className="grid h-8 w-8 place-items-center rounded-lg border border-slate-200 text-slate-400 hover:border-red-200 hover:bg-red-50 hover:text-red-500"
+                        >
+                          <X className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                      <div className={cardPrice}>
+                        <p className="font-display text-lg font-bold text-ink">Free</p>
+                        <p className="flex items-center justify-center gap-1 text-sm font-semibold text-emerald-600 sm:justify-end">
+                          <Zap className="h-3.5 w-3.5" /> Satiety: {displaySoup.satiety}
+                        </p>
+                      </div>
                     </div>
                   </div>
                 )}
@@ -458,54 +472,58 @@ export default function Result() {
                     (p) => p.id === item.id || !displayProteins.some((pi) => pi.id === p.id),
                   );
                   return (
-                    <div key={item.id} className={rowCls}>
-                      <div className="grid h-14 w-14 shrink-0 place-items-center rounded-lg bg-gradient-to-br from-navy to-navy-800 text-gold">
-                        <Zap className="h-6 w-6" />
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        {swapOptions.length > 1 ? (
-                          <div className="flex items-center gap-1.5">
-                            <select
-                              value={item.id}
-                              onChange={(e) => swapProtein(item.id, e.target.value)}
-                              className="rounded-lg border border-slate-200 bg-white py-1 pl-2 pr-7 font-display text-base font-bold text-ink outline-none focus:border-navy"
-                            >
-                              {swapOptions.map((p) => (
-                                <option key={p.id} value={p.id}>{p.name}</option>
-                              ))}
-                            </select>
-                            <Repeat className="h-3.5 w-3.5 text-slate-300" />
+                    <div key={item.id} className={cardCls}>
+                      <div className={cardInner}>
+                        <div className={cardIconGroup}>
+                          <div className="grid h-14 w-14 shrink-0 place-items-center rounded-lg bg-gradient-to-br from-navy to-navy-800 text-gold">
+                            <Zap className="h-6 w-6" />
                           </div>
-                        ) : (
-                          <p className="font-display text-lg font-bold text-ink">{item.name}</p>
-                        )}
-                        <p className="mt-2 text-sm text-slate-500">
-                          {CATEGORY_LABEL[item.category] || item.category}
-                          {" · "}
-                          {item.portions} {item.portions > 1 ? "portions" : "portion"}
-                          {item.note && !item.note.toLowerCase().includes("auto") ? ` · ${item.note}` : ""}
-                        </p>
-                      </div>
-                      <div className="flex shrink-0 items-center gap-1.5">
-                        <button
-                          onClick={() => adjustProteinQty(item.id, -1)}
-                          className="grid h-8 w-8 place-items-center rounded-lg border border-slate-200 text-ink hover:bg-slate-50"
-                        >
-                          <Minus className="h-3.5 w-3.5" />
-                        </button>
-                        <span className="w-6 text-center font-display text-sm font-bold text-ink">{item.portions}</span>
-                        <button
-                          onClick={() => adjustProteinQty(item.id, 1)}
-                          className="grid h-8 w-8 place-items-center rounded-lg border border-slate-200 text-ink hover:bg-slate-50"
-                        >
-                          <Plus className="h-3.5 w-3.5" />
-                        </button>
-                      </div>
-                      <div className="text-right">
-                        <p className="font-display text-lg font-bold text-ink">₦{item.lineCost.toLocaleString()}</p>
-                        <p className="flex items-center justify-end gap-1 text-sm font-semibold text-emerald-600">
-                          <Zap className="h-3.5 w-3.5" /> Satiety: {item.satiety}
-                        </p>
+                          <div className="min-w-0 flex-1">
+                            {swapOptions.length > 1 ? (
+                              <div className="flex items-center gap-1.5">
+                                <select
+                                  value={item.id}
+                                  onChange={(e) => swapProtein(item.id, e.target.value)}
+                                  className="max-w-[160px] rounded-lg border border-slate-200 bg-white py-1 pl-2 pr-7 font-display text-base font-bold text-ink outline-none focus:border-navy sm:max-w-none"
+                                >
+                                  {swapOptions.map((p) => (
+                                    <option key={p.id} value={p.id}>{p.name}</option>
+                                  ))}
+                                </select>
+                                <Repeat className="h-3.5 w-3.5 shrink-0 text-slate-300" />
+                              </div>
+                            ) : (
+                              <p className="font-display text-lg font-bold text-ink">{item.name}</p>
+                            )}
+                            <p className="mt-1 text-sm text-slate-500">
+                              {CATEGORY_LABEL[item.category] || item.category}
+                              {" · "}
+                              {item.portions} {item.portions > 1 ? "portions" : "portion"}
+                              {item.note && !item.note.toLowerCase().includes("auto") ? ` · ${item.note}` : ""}
+                            </p>
+                          </div>
+                        </div>
+                        <div className={cardControls}>
+                          <button
+                            onClick={() => adjustProteinQty(item.id, -1)}
+                            className="grid h-8 w-8 place-items-center rounded-lg border border-slate-200 text-ink hover:bg-slate-50"
+                          >
+                            <Minus className="h-3.5 w-3.5" />
+                          </button>
+                          <span className="w-6 text-center font-display text-sm font-bold text-ink">{item.portions}</span>
+                          <button
+                            onClick={() => adjustProteinQty(item.id, 1)}
+                            className="grid h-8 w-8 place-items-center rounded-lg border border-slate-200 text-ink hover:bg-slate-50"
+                          >
+                            <Plus className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
+                        <div className={cardPrice}>
+                          <p className="font-display text-lg font-bold text-ink">₦{item.lineCost.toLocaleString()}</p>
+                          <p className="flex items-center justify-center gap-1 text-sm font-semibold text-emerald-600 sm:justify-end">
+                            <Zap className="h-3.5 w-3.5" /> Satiety: {item.satiety}
+                          </p>
+                        </div>
                       </div>
                     </div>
                   );
@@ -534,40 +552,44 @@ export default function Result() {
 
                 {/* ── Side (Fried Plantain etc.) ── */}
                 {displaySide && (
-                  <div className={rowCls}>
-                    <div className="grid h-14 w-14 shrink-0 place-items-center rounded-lg bg-gradient-to-br from-navy to-navy-800 text-gold">
-                      <Zap className="h-6 w-6" />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="font-display text-lg font-bold text-ink">{displaySide.name}</p>
-                      <p className="mt-2 text-sm text-slate-500">
-                        {CATEGORY_LABEL[displaySide.category] || displaySide.category}
-                        {" · "}
-                        {displaySide.portions} {displaySide.portions > 1 ? "portions" : "portion"}
-                        {displaySide.note ? ` · ${displaySide.note}` : ""}
-                      </p>
-                    </div>
-                    <div className="flex shrink-0 items-center gap-1.5">
-                      <button
-                        onClick={() => adjustSide(-1)}
-                        className="grid h-8 w-8 place-items-center rounded-lg border border-slate-200 text-ink hover:bg-slate-50"
-                      >
-                        <Minus className="h-3.5 w-3.5" />
-                      </button>
-                      <span className="w-6 text-center font-display text-sm font-bold text-ink">{displaySide.portions}</span>
-                      <button
-                        onClick={() => adjustSide(1)}
-                        disabled={displaySlack < (sideMenuItem?.price ?? Infinity)}
-                        className="grid h-8 w-8 place-items-center rounded-lg border border-slate-200 text-ink hover:bg-slate-50 disabled:opacity-30 disabled:hover:bg-transparent"
-                      >
-                        <Plus className="h-3.5 w-3.5" />
-                      </button>
-                    </div>
-                    <div className="text-right">
-                      <p className="font-display text-lg font-bold text-ink">₦{displaySide.lineCost.toLocaleString()}</p>
-                      <p className="flex items-center justify-end gap-1 text-sm font-semibold text-emerald-600">
-                        <Zap className="h-3.5 w-3.5" /> Satiety: {displaySide.satiety}
-                      </p>
+                  <div className={cardCls}>
+                    <div className={cardInner}>
+                      <div className={cardIconGroup}>
+                        <div className="grid h-14 w-14 shrink-0 place-items-center rounded-lg bg-gradient-to-br from-navy to-navy-800 text-gold">
+                          <Zap className="h-6 w-6" />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="font-display text-lg font-bold text-ink">{displaySide.name}</p>
+                          <p className="mt-1 text-sm text-slate-500">
+                            {CATEGORY_LABEL[displaySide.category] || displaySide.category}
+                            {" · "}
+                            {displaySide.portions} {displaySide.portions > 1 ? "portions" : "portion"}
+                            {displaySide.note ? ` · ${displaySide.note}` : ""}
+                          </p>
+                        </div>
+                      </div>
+                      <div className={cardControls}>
+                        <button
+                          onClick={() => adjustSide(-1)}
+                          className="grid h-8 w-8 place-items-center rounded-lg border border-slate-200 text-ink hover:bg-slate-50"
+                        >
+                          <Minus className="h-3.5 w-3.5" />
+                        </button>
+                        <span className="w-6 text-center font-display text-sm font-bold text-ink">{displaySide.portions}</span>
+                        <button
+                          onClick={() => adjustSide(1)}
+                          disabled={displaySlack < (sideMenuItem?.price ?? Infinity)}
+                          className="grid h-8 w-8 place-items-center rounded-lg border border-slate-200 text-ink hover:bg-slate-50 disabled:opacity-30 disabled:hover:bg-transparent"
+                        >
+                          <Plus className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                      <div className={cardPrice}>
+                        <p className="font-display text-lg font-bold text-ink">₦{displaySide.lineCost.toLocaleString()}</p>
+                        <p className="flex items-center justify-center gap-1 text-sm font-semibold text-emerald-600 sm:justify-end">
+                          <Zap className="h-3.5 w-3.5" /> Satiety: {displaySide.satiety}
+                        </p>
+                      </div>
                     </div>
                   </div>
                 )}
