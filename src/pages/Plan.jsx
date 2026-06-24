@@ -1,7 +1,7 @@
 import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { CAFETERIAS, getCheapestMealCost, MEAL_TYPES } from "../data/dataset.js";
-import { Star, MapPin, TrendingDown, ChevronRight, Sunrise, Sun, Moon } from "lucide-react";
+import { Star, MapPin, TrendingDown, ChevronRight, Sunrise, Sun, Moon, Leaf, Utensils, Soup } from "lucide-react";
 import { useAuth } from "../lib/auth.jsx";
 
 const MEAL_ICONS = { breakfast: Sunrise, lunch: Sun, dinner: Moon };
@@ -10,7 +10,11 @@ const MEAL_COLORS = {
   lunch:     { active: "bg-emerald-500 text-white",  border: "border-emerald-300 dark:border-emerald-700", icon: "text-emerald-500", light: "bg-emerald-50 dark:bg-emerald-950/30" },
   dinner:    { active: "bg-indigo-500 text-white",   border: "border-indigo-300 dark:border-indigo-700",  icon: "text-indigo-500",  light: "bg-indigo-50 dark:bg-indigo-950/30"  },
 };
-const APPETITE_OPTS = ["Light", "Normal", "Large"];
+const APPETITE_OPTS = [
+  { key: "Light",  icon: Leaf,     desc: "Light eater"  },
+  { key: "Normal", icon: Utensils, desc: "Regular meal" },
+  { key: "Large",  icon: Soup,     desc: "Very hungry"  },
+];
 
 function getActiveMealByTime() {
   const hour = new Date().getHours();
@@ -35,30 +39,29 @@ function StarRating({ rating }) {
 }
 
 export default function Plan() {
-  const navigate  = useNavigate();
+  const navigate    = useNavigate();
   const { session } = useAuth();
 
   const [activeMeal, setActiveMeal] = useState(getActiveMealByTime());
   const [budget, setBudget]         = useState("");
   const [appetite, setAppetite]     = useState("Normal");
 
-  const budgetNum = Number(budget) || 0;
-  const perMeal   = budgetNum > 0 ? Math.floor(budgetNum / 3) : 0;
-  const hasBudget = budget !== "";
-  const canSuggest = perMeal >= 400;
+  const budgetNum  = Number(budget) || 0;
+  const hasBudget  = budget !== "";
+  const canSuggest = budgetNum >= 400;
 
   const feasible = useMemo(() => {
-    if (perMeal < 400) return [];
+    if (budgetNum < 400) return [];
     return CAFETERIAS
-      .filter(c => getCheapestMealCost(c.id) <= perMeal)
+      .filter(c => getCheapestMealCost(c.id) <= budgetNum)
       .sort((a, b) => b.rating - a.rating);
-  }, [perMeal]);
+  }, [budgetNum]);
 
   const userName = session?.user?.user_metadata?.full_name?.split(" ")[0] || "there";
 
   function goToOptimizer(cafe) {
     navigate(
-      `/app/optimizer?budget=${perMeal}&cafe=${cafe.id}&meal=${activeMeal}&appetite=${appetite}&crave=&avoid=`
+      `/app/optimizer?budget=${budget}&cafe=${cafe.id}&meal=${activeMeal}&appetite=${appetite}&crave=&avoid=`
     );
   }
 
@@ -77,11 +80,11 @@ export default function Plan() {
         </p>
       </div>
 
-      {/* Meal type tabs — icon + label only, no time text */}
+      {/* Meal type tabs — icon + label only */}
       <div className="flex gap-2 mb-5">
         {Object.values(MEAL_TYPES).map(mt => {
-          const Icon    = MEAL_ICONS[mt.key];
-          const col     = MEAL_COLORS[mt.key];
+          const Icon     = MEAL_ICONS[mt.key];
+          const col      = MEAL_COLORS[mt.key];
           const isActive = activeMeal === mt.key;
           return (
             <button
@@ -112,9 +115,9 @@ export default function Plan() {
         </div>
 
         {/* Budget input */}
-        <div className="mb-4">
+        <div className="mb-5">
           <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-2 block">
-            How much can you spend today?
+            How much can you spend on this meal?
           </label>
           <div className="flex items-center rounded-xl border-2 border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-800 px-4 py-3 focus-within:border-navy dark:focus-within:border-blue-400 transition">
             <span className="mr-2 font-display text-2xl font-bold text-slate-400">₦</span>
@@ -128,110 +131,96 @@ export default function Plan() {
               className="w-full bg-transparent font-display text-2xl font-bold text-ink dark:text-slate-100 outline-none placeholder:text-slate-300 dark:placeholder:text-slate-600"
             />
           </div>
-          {hasBudget && !canSuggest && budgetNum > 0 && (
+          {hasBudget && budgetNum > 0 && !canSuggest && (
             <p className="mt-2 text-xs text-amber-600 font-medium">
-              ⚠️ Per-meal budget of ₦{perMeal.toLocaleString()} is too low — minimum ₦400/meal (₦1,200/day)
+              ⚠️ Minimum budget for a meal is ₦400
             </p>
           )}
           {canSuggest && (
             <p className="mt-2 text-xs text-emerald-600 font-medium">
-              ✓ ₦{perMeal.toLocaleString()} per meal — showing cafeteria options below
+              ✓ ₦{budgetNum.toLocaleString()} budget — showing cafeteria options below
             </p>
           )}
         </div>
 
-        {/* Appetite */}
+        {/* Appetite — Optimizer-style icon cards */}
         <div>
           <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-2 block">
             Appetite level
           </label>
-          <div className="flex gap-2">
-            {APPETITE_OPTS.map(a => (
+          <div className="grid grid-cols-3 gap-2">
+            {APPETITE_OPTS.map(({ key, icon: Icon, desc }) => (
               <button
-                key={a}
-                onClick={() => setAppetite(a)}
-                className={`flex-1 rounded-xl py-2.5 text-sm font-semibold transition border ${
-                  appetite === a
-                    ? "bg-navy text-white border-navy"
-                    : "bg-white dark:bg-slate-700 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-600 hover:border-slate-300"
+                key={key}
+                onClick={() => setAppetite(key)}
+                className={`flex flex-col items-center gap-1.5 rounded-xl border py-4 text-xs font-semibold transition ${
+                  appetite === key
+                    ? "border-gold bg-gold text-navy-900 shadow-sm"
+                    : "border-slate-200 bg-slate-50 text-slate-500 hover:border-slate-300 hover:bg-white"
                 }`}
               >
-                {a}
+                <Icon className="h-5 w-5" />
+                <span>{key}</span>
+                <span className={`text-[10px] font-normal ${appetite === key ? "text-navy-900/70" : "text-slate-400"}`}>
+                  {desc}
+                </span>
               </button>
             ))}
           </div>
         </div>
       </div>
 
-      {/* Per-meal breakdown + cafeteria list */}
+      {/* Cafeteria list */}
       {hasBudget && budgetNum > 0 && (
-        <>
-          {/* Per Meal calculation */}
-          <div className="grid grid-cols-2 gap-3 mb-5">
-            <div className="card p-3 text-center">
-              <p className="font-display text-lg font-bold text-ink dark:text-slate-100">
-                ₦{budgetNum.toLocaleString()}
-              </p>
-              <p className="text-xs text-slate-400 mt-0.5">Daily Budget</p>
-            </div>
-            <div className="card p-3 text-center">
-              <p className="font-display text-lg font-bold text-ink dark:text-slate-100">
-                ₦{perMeal.toLocaleString()}
-              </p>
-              <p className="text-xs text-slate-400 mt-0.5">Per Meal (÷3)</p>
-            </div>
+        canSuggest ? (
+          <div>
+            <p className="text-[11px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500 mb-3">
+              Recommended Cafeterias (₦{budgetNum.toLocaleString()}/meal)
+            </p>
+            {feasible.length > 0 ? (
+              <div className="space-y-2">
+                {feasible.map(cafe => (
+                  <button
+                    key={cafe.id}
+                    onClick={() => goToOptimizer(cafe)}
+                    className="w-full text-left card p-4 hover:border-navy dark:hover:border-blue-500 transition-all group flex items-center gap-4"
+                  >
+                    <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-navy text-white font-bold text-sm">
+                      {cafe.name.slice(0, 2).toUpperCase()}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-bold text-ink dark:text-slate-100 text-sm">{cafe.name}</p>
+                      <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                        <span className="flex items-center gap-1 text-xs text-slate-400">
+                          <MapPin className="h-3 w-3" />{cafe.side}
+                        </span>
+                        <StarRating rating={cafe.rating} />
+                      </div>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <p className="text-xs text-emerald-600 font-semibold flex items-center justify-end gap-1">
+                        <TrendingDown className="h-3 w-3" /> Fits budget
+                      </p>
+                      <ChevronRight className="h-4 w-4 text-slate-300 group-hover:text-navy dark:group-hover:text-blue-400 ml-auto mt-1 transition" />
+                    </div>
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <div className="card p-5 text-center">
+                <p className="text-sm text-slate-500 dark:text-slate-400">
+                  No cafeterias fit this budget. Try increasing your amount.
+                </p>
+              </div>
+            )}
           </div>
-
-          {canSuggest ? (
-            <div>
-              <p className="text-[11px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500 mb-3">
-                Recommended Cafeterias (₦{perMeal.toLocaleString()}/meal)
-              </p>
-              {feasible.length > 0 ? (
-                <div className="space-y-2">
-                  {feasible.map(cafe => (
-                    <button
-                      key={cafe.id}
-                      onClick={() => goToOptimizer(cafe)}
-                      className="w-full text-left card p-4 hover:border-navy dark:hover:border-blue-500 transition-all group flex items-center gap-4"
-                    >
-                      <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-navy text-white font-bold text-sm">
-                        {cafe.name.slice(0, 2).toUpperCase()}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="font-bold text-ink dark:text-slate-100 text-sm">{cafe.name}</p>
-                        <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-                          <span className="flex items-center gap-1 text-xs text-slate-400">
-                            <MapPin className="h-3 w-3" />{cafe.side}
-                          </span>
-                          <StarRating rating={cafe.rating} />
-                        </div>
-                      </div>
-                      <div className="text-right shrink-0">
-                        <p className="text-xs text-emerald-600 font-semibold flex items-center justify-end gap-1">
-                          <TrendingDown className="h-3 w-3" /> Fits budget
-                        </p>
-                        <ChevronRight className="h-4 w-4 text-slate-300 group-hover:text-navy dark:group-hover:text-blue-400 ml-auto mt-1 transition" />
-                      </div>
-                    </button>
-                  ))}
-                </div>
-              ) : (
-                <div className="card p-5 text-center">
-                  <p className="text-sm text-slate-500 dark:text-slate-400">
-                    No cafeterias fit this budget. Try increasing your amount.
-                  </p>
-                </div>
-              )}
-            </div>
-          ) : (
-            <div className="card p-5 text-center">
-              <p className="text-sm text-amber-600 font-medium">
-                ⚠️ Budget too low. Try at least ₦1,200/day (₦400/meal).
-              </p>
-            </div>
-          )}
-        </>
+        ) : (
+          <div className="card p-5 text-center">
+            <p className="text-sm text-amber-600 font-medium">
+              ⚠️ Budget too low. Minimum is ₦400 for a meal.
+            </p>
+          </div>
+        )
       )}
 
       {/* Empty state */}
@@ -242,7 +231,7 @@ export default function Plan() {
           </div>
           <p className="font-semibold text-ink dark:text-slate-100">Enter your budget above</p>
           <p className="mt-1 text-sm text-slate-400">
-            We'll show you the best cafeterias for your budget
+            We'll show you the best cafeterias for your meal
           </p>
         </div>
       )}
