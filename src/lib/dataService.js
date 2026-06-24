@@ -68,7 +68,6 @@ export async function fetchMenu(cafeId) {
     } else if (!data?.length) {
       console.warn("[OptiMeal] menu_for_cafeteria returned no rows for cafe", cafeId, "— falling back to local data. Check that seed.sql actually ran.");
     } else {
-      console.log("[OptiMeal] Loaded", data.length, "menu items from Supabase for cafe", cafeId);
       return data.map(normalizeMenuItem);
     }
   }
